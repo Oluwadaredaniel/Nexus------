@@ -2,7 +2,7 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, LayoutDashboard, Users, BookOpen, GraduationCap, Building2, UserCog, User, Home, Radio, CheckCircle, ShieldCheck } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, BookOpen, GraduationCap, Building2, UserCog, User, Home, Radio, CheckCircle, ShieldAlert, BarChart, Layers } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,16 +21,26 @@ export default function Layout() {
     navigate('/login');
   };
 
+  const handleProfileClick = () => {
+    if (user?.role === 'super_admin') navigate('/admin/profile');
+    else if (user?.role === 'class_rep') navigate('/rep/profile');
+    else navigate('/student/profile');
+  };
+
   if (!user) return null;
 
   const adminLinks = [
     { icon: LayoutDashboard, label: "Overview", path: "/admin" },
     { icon: Building2, label: "Faculties", path: "/admin/faculties" },
+    { icon: Layers, label: "Departments", path: "/admin/departments" },
+    { icon: BarChart, label: "Levels", path: "/admin/levels" },
     { icon: BookOpen, label: "Courses", path: "/admin/courses" },
     { icon: Users, label: "Students", path: "/admin/students" },
     { icon: UserCog, label: "Reps", path: "/admin/reps" },
+    { icon: ShieldAlert, label: "Admins", path: "/admin/admins" },
     { icon: Radio, label: "Sessions", path: "/admin/sessions" },
-    // Shared Student Functionalities for Admin
+    { icon: Users, label: "Upload Lists", path: "/admin/class-lists" },
+    // Shared
     { icon: CheckCircle, label: "Mark Attendance", path: "/mark-attendance" },
     { icon: GraduationCap, label: "My History", path: "/history" },
   ];
@@ -39,9 +49,10 @@ export default function Layout() {
     { icon: LayoutDashboard, label: "Dash", path: "/rep" },
     { icon: Radio, label: "Manage Sessions", path: "/rep/sessions" },
     { icon: Users, label: "Class List", path: "/rep/students" },
-    // Shared Student Functionalities for Rep
+    // Shared
     { icon: CheckCircle, label: "Mark Attendance", path: "/mark-attendance" },
     { icon: GraduationCap, label: "My History", path: "/history" },
+    { icon: User, label: "My Profile", path: "/rep/profile" },
   ];
 
   const studentLinks = [
@@ -73,7 +84,7 @@ export default function Layout() {
             </div>
           </div>
           
-          <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-200px)] no-scrollbar">
+          <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-200px)] no-scrollbar pr-2">
             {links.map((link) => (
               <Button
                 key={link.path}
@@ -92,7 +103,7 @@ export default function Layout() {
         </div>
 
         <div className="mt-auto p-4 border-t border-white/5 bg-black/10">
-          <div className="flex items-center gap-3 mb-4 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors" onClick={() => user.role === 'student' && navigate('/student/profile')}>
+          <div className="flex items-center gap-3 mb-4 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors" onClick={handleProfileClick}>
             <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-inner">
               {user.name.charAt(0)}
             </div>

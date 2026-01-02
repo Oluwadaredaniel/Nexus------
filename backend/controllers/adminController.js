@@ -20,6 +20,13 @@ export const getFaculties = async (req, res) => {
   res.json(faculties);
 };
 
+export const deleteFaculty = async (req, res) => {
+  try {
+    await Faculty.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Faculty deleted' });
+  } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
 export const addDepartment = async (req, res) => {
   const { facultyId, name, options } = req.body;
   try {
@@ -36,6 +43,18 @@ export const addDepartment = async (req, res) => {
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
+export const deleteDepartment = async (req, res) => {
+  const { facultyId, deptId } = req.params;
+  try {
+    const faculty = await Faculty.findById(facultyId);
+    if (!faculty) return res.status(404).json({ message: 'Faculty not found' });
+    
+    faculty.departments = faculty.departments.filter(d => d._id.toString() !== deptId);
+    await faculty.save();
+    res.json(faculty);
+  } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
 // --- Levels ---
 export const addLevel = async (req, res) => {
   try {
@@ -48,6 +67,13 @@ export const getLevels = async (req, res) => {
   try {
     const levels = await Level.find({}).sort({ name: 1 });
     res.json(levels);
+  } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
+export const deleteLevel = async (req, res) => {
+  try {
+    await Level.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Level deleted' });
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
@@ -81,7 +107,6 @@ export const deleteCourse = async (req, res) => {
 // --- Student & Rep Management ---
 export const getAllStudents = async (req, res) => {
   try {
-    // Filter to exclude super_admins, generic fetch
     const students = await User.find({ role: { $ne: 'super_admin' } }).select('-password').sort({ createdAt: -1 }).limit(100); 
     res.json(students);
   } catch (error) { res.status(500).json({ message: error.message }); }
@@ -154,6 +179,14 @@ export const assignClassRep = async (req, res) => {
     await user.save();
     res.json({ message: `User ${regNo} is now a Class Rep` });
   } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
+// --- Admins ---
+export const getAdmins = async (req, res) => {
+  try {
+    const admins = await User.find({ role: 'super_admin' }).select('-password');
+    res.json(admins);
+  } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
 export const createSuperAdmin = async (req, res) => {
