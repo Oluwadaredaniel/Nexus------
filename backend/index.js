@@ -18,23 +18,21 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: {
-    origin: "*", 
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); 
+app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/rep', repRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
+// Socket.IO
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
   socket.on('join_session', (sessionId) => {
     socket.join(sessionId);
   });
@@ -43,6 +41,7 @@ io.on('connection', (socket) => {
   });
 });
 
+// Database
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/nexus')
   .then(async () => {
     console.log('MongoDB Connected');
@@ -50,16 +49,14 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/nexus')
     if (!adminExists) {
       await User.create({
         regNo: 'SUPER_ADMIN',
-        password: 'admin', 
+        password: 'admin',
         name: 'System Administrator',
         role: 'super_admin'
       });
-      console.log('Bootstrap: SUPER_ADMIN account created (pw: admin)');
+      console.log('Bootstrap: SUPER_ADMIN created (pw: admin)');
     }
   })
   .catch(err => console.error(err));
 
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));

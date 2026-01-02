@@ -6,17 +6,7 @@
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#09090b",
-  "description": "Premium University Attendance & Class Management",
   "icons": [
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

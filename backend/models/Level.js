@@ -1,8 +1,6 @@
 
 import mongoose from 'mongoose';
-
 const levelSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true } // e.g., "100", "200", "ND 1"
+  name: { type: String, required: true, unique: true } 
 }, { timestamps: true });
-
 export default mongoose.model('Level', levelSchema);
