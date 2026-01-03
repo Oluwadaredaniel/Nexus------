@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: 'https://nexus-ejw9.onrender.com/api',
   withCredentials: false, // set to true only if you later use cookies
 });
 
