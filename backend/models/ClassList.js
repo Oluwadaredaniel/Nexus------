@@ -7,7 +7,7 @@ const classListSchema = new mongoose.Schema({
   faculty: { type: String, required: true },
   department: { type: String, required: true },
   level: { type: String, required: true },
-  option: { type: String, default: null }
+  option: { type: String, default: null } // For sub-tracks
 }, { timestamps: true });
 
 export default mongoose.model('ClassList', classListSchema);

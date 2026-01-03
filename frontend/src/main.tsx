@@ -8,6 +8,7 @@ import { Toaster } from 'react-hot-toast';
 // Components
 import Layout from './components/Layout';
 import PageLoader from './components/ui/loader';
+import PwaListener from './components/PwaListener';
 
 // Lazy Load Pages for Performance
 const Landing = lazy(() => import('./pages/Landing'));
@@ -42,6 +43,7 @@ const StudentProfile = lazy(() => import('./pages/student/Profile'));
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
+    <PwaListener />
     <HashRouter>
       <Toaster 
         position="top-right" 

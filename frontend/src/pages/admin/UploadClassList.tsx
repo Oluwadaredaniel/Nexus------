@@ -3,56 +3,301 @@ import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Upload, AlertCircle, Layers, Users, BookOpen } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+const MotionDiv = motion.div as any;
 
 export default function UploadClassList() {
-  const [meta, setMeta] = useState<{ faculties: any[], levels: any[] }>({ faculties: [], levels: [] });
-  const [file, setFile] = useState<any>(null);
-  const [ctx, setCtx] = useState({ faculty: '', department: '', level: '', option: '' });
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [faculties, setFaculties] = useState<any[]>([]);
+  const [levels, setLevels] = useState<any[]>([]);
+  const [summaries, setSummaries] = useState<any[]>([]);
   
-  useEffect(() => { api.get('/admin/faculties').then(f => api.get('/admin/levels').then(l => setMeta({ faculties: f.data, levels: l.data }))); }, []);
-  
-  const handleUpload = async () => {
-    if (!file || !ctx.faculty || !ctx.department || !ctx.level) return toast.error('Missing fields');
+  // Context State
+  const [selectedFaculty, setSelectedFaculty] = useState('');
+  const [selectedDept, setSelectedDept] = useState('');
+  const [selectedDeptData, setSelectedDeptData] = useState<any>(null);
+  const [selectedOption, setSelectedOption] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState('');
+
+  const departments = faculties.find(f => f.name === selectedFaculty)?.departments || [];
+  const hasOptions = selectedDeptData?.options && selectedDeptData.options.length > 0;
+
+  useEffect(() => {
+    fetchMeta();
+    fetchSummaries();
+  }, []);
+
+  const fetchMeta = async () => {
+     try {
+       const [facRes, levRes] = await Promise.all([
+         api.get('/admin/faculties'),
+         api.get('/admin/levels')
+       ]);
+       setFaculties(facRes.data);
+       setLevels(levRes.data);
+     } catch(e) { console.error(e); }
+  };
+
+  const fetchSummaries = async () => {
+    try {
+      const res = await api.get('/admin/classlist-summaries');
+      setSummaries(res.data);
+    } catch(e) { console.error(e); }
+  };
+
+  const handleDeptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const deptName = e.target.value;
+    setSelectedDept(deptName);
+    const deptData = departments.find((d: any) => d.name === deptName);
+    setSelectedDeptData(deptData);
+    setSelectedOption(''); 
+  };
+
+  const normalizeHeaders = (data: any[]) => {
+    return data.map(row => {
+      const newRow: any = {};
+      Object.keys(row).forEach(key => {
+        // Normalize key: remove spaces, lowercase, remove special chars
+        const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        // Map common variations to standard keys
+        if (['regno', 'matricno', 'matriculationnumber', 'registrationnumber', 'id', 'studentno'].includes(cleanKey)) {
+          newRow.regNo = String(row[key]).trim();
+        } else if (['name', 'fullname', 'studentname', 'names'].includes(cleanKey)) {
+          newRow.name = String(row[key]).trim();
+        } else {
+          newRow[key] = row[key];
+        }
+      });
+      return newRow;
+    });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedFaculty || !selectedDept || !selectedLevel) {
+       toast.error('Missing context');
+       return;
+    }
+    if (hasOptions && !selectedOption) {
+      toast.error('Please select an Option/Track');
+      return;
+    }
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = async (e) => {
-      const data = XLSX.utils.sheet_to_json(XLSX.read(e.target?.result, { type: 'binary' }).Sheets[XLSX.read(e.target?.result, { type: 'binary' }).SheetNames[0]]);
+    reader.onload = async (evt) => {
       try {
-        await api.post('/admin/upload-classlist', { students: data, context: ctx });
-        toast.success('Uploaded successfully');
-      } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawData = XLSX.utils.sheet_to_json(ws);
+        
+        // Normalize Data
+        const normalizedData = normalizeHeaders(rawData);
+        const validRows = normalizedData.filter((r: any) => r.regNo && r.name);
+
+        if (validRows.length === 0) {
+          toast.error('No valid rows found. Ensure columns "RegNo" and "Name" exist.');
+          return;
+        }
+
+        console.log(`Found ${validRows.length} valid students`, validRows[0]);
+        await uploadData(validRows);
+      } catch (err) {
+        console.error(err);
+        toast.error('Error parsing Excel file.');
+      }
     };
     reader.readAsBinaryString(file);
   };
 
-  const departments = meta.faculties.find((f: any) => f.name === ctx.faculty)?.departments || [];
-  const options = departments.find((d: any) => d.name === ctx.department)?.options || [];
+  const uploadData = async (data: any[]) => {
+    setLoading(true);
+    try {
+      const payload = {
+         students: data,
+         context: {
+            faculty: selectedFaculty,
+            department: selectedDept,
+            level: selectedLevel,
+            option: hasOptions ? selectedOption : null
+         }
+      };
+
+      const res = await api.post('/admin/upload-classlist', payload);
+      toast.success(res.data.message || `Uploaded ${data.length} students`);
+      
+      // Reset & Refresh
+      setStep(1);
+      eRef.current.value = ""; // Clear file input
+      fetchSummaries();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to upload class list');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Ref for file input to clear it after upload
+  const eRef = React.useRef<HTMLInputElement>(null);
+
+  const canProceedToUpload = selectedFaculty && selectedDept && selectedLevel && (!hasOptions || selectedOption);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <h2 className="text-3xl font-bold text-white">Upload Class List</h2>
-      <div className="glass-card p-8 rounded-3xl space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <select onChange={e => setCtx({ ...ctx, faculty: e.target.value })} className="p-3 bg-black/20 rounded-xl text-zinc-300 border border-white/10">
-            <option value="">Select Faculty</option>
-            {meta.faculties.map((f: any) => <option key={f._id} value={f.name}>{f.name}</option>)}
-          </select>
-          <select onChange={e => setCtx({ ...ctx, department: e.target.value })} className="p-3 bg-black/20 rounded-xl text-zinc-300 border border-white/10">
-            <option value="">Select Dept</option>
-            {departments.map((d: any) => <option key={d._id} value={d.name}>{d.name}</option>)}
-          </select>
+    <div className="space-y-8 max-w-5xl mx-auto">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Class List Management</h2>
+          <p className="text-muted-foreground">Manage student data and cohort sources.</p>
         </div>
-        {options.length > 0 && (
-          <select onChange={e => setCtx({ ...ctx, option: e.target.value })} className="w-full p-3 bg-black/20 rounded-xl text-zinc-300 border border-white/10">
-            <option value="">Select Option</option>
-            {options.map((o: any) => <option key={o._id} value={o.name}>{o.name}</option>)}
-          </select>
-        )}
-        <select onChange={e => setCtx({ ...ctx, level: e.target.value })} className="w-full p-3 bg-black/20 rounded-xl text-zinc-300 border border-white/10">
-          <option value="">Select Level</option>
-          {meta.levels.map((l: any) => <option key={l._id} value={l.name}>{l.name}</option>)}
-        </select>
-        <input type="file" onChange={e => setFile(e.target.files?.[0])} className="w-full p-4 border-2 border-dashed border-white/20 rounded-xl text-zinc-400" />
-        <button onClick={handleUpload} className="w-full py-3 bg-primary rounded-xl font-bold text-white">Process Upload</button>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-8">
+        
+        {/* Upload Card */}
+        <Card className="glass-card border-primary/20 h-fit">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" /> Upload New List
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+               <div>
+                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Faculty</label>
+                 <select 
+                   className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 focus:ring-2 focus:ring-primary outline-none text-white appearance-none"
+                   value={selectedFaculty}
+                   onChange={(e) => { setSelectedFaculty(e.target.value); setSelectedDept(''); setSelectedOption(''); }}
+                 >
+                   <option value="">-- Select Faculty --</option>
+                   {faculties.map(f => <option key={f._id} value={f.name}>{f.name}</option>)}
+                 </select>
+               </div>
+               
+               <div>
+                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Department</label>
+                 <select 
+                   className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 focus:ring-2 focus:ring-primary outline-none text-white appearance-none"
+                   value={selectedDept}
+                   onChange={handleDeptChange}
+                   disabled={!selectedFaculty}
+                 >
+                   <option value="">-- Select Department --</option>
+                   {departments.map((d: any) => <option key={d._id} value={d.name}>{d.name}</option>)}
+                 </select>
+               </div>
+
+               {hasOptions && (
+                 <MotionDiv initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                    <label className="text-xs font-medium uppercase tracking-wider text-primary ml-1">Option / Track</label>
+                    <select 
+                      className="w-full p-3 rounded-xl bg-zinc-900 border border-primary/50 focus:ring-2 focus:ring-primary outline-none text-white appearance-none"
+                      value={selectedOption}
+                      onChange={(e) => setSelectedOption(e.target.value)}
+                    >
+                      <option value="">-- Select Option --</option>
+                      {selectedDeptData.options.map((o: any) => <option key={o._id} value={o.name}>{o.name}</option>)}
+                    </select>
+                 </MotionDiv>
+               )}
+
+               <div>
+                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Level</label>
+                 <select 
+                   className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 focus:ring-2 focus:ring-primary outline-none text-white appearance-none"
+                   value={selectedLevel}
+                   onChange={(e) => setSelectedLevel(e.target.value)}
+                 >
+                   <option value="">-- Select Level --</option>
+                   {levels.map((l: any) => <option key={l._id} value={l.name}>{l.name}</option>)}
+                 </select>
+               </div>
+            </div>
+
+            <div className={`p-6 border-2 border-dashed rounded-2xl text-center transition-all duration-300 ${canProceedToUpload ? 'border-primary/50 bg-primary/5 cursor-pointer hover:bg-primary/10' : 'border-white/10 opacity-50 cursor-not-allowed'}`}>
+              <input 
+                ref={eRef}
+                type="file" 
+                accept=".xlsx, .xls" 
+                onChange={handleFileUpload} 
+                className="hidden" 
+                id="file-upload" 
+                disabled={!canProceedToUpload || loading}
+              />
+              <label htmlFor="file-upload" className={`flex flex-col items-center ${canProceedToUpload ? 'cursor-pointer' : ''}`}>
+                {loading ? (
+                  <div className="flex flex-col items-center gap-2 text-primary animate-pulse">
+                    <Layers className="h-8 w-8 animate-bounce" />
+                    Processing...
+                  </div>
+                ) : (
+                  <>
+                    <Upload className={`h-8 w-8 mb-2 ${canProceedToUpload ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <div className="font-semibold text-white">Select Excel File</div>
+                    <p className="text-xs text-muted-foreground mt-1">Columns: RegNo, Name</p>
+                  </>
+                )}
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Summaries List */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+               <BookOpen className="h-5 w-5 text-zinc-400" /> Existing Cohorts
+             </h3>
+             <span className="text-xs text-muted-foreground">{summaries.length} Lists Found</span>
+          </div>
+          
+          <div className="grid gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+            {summaries.map((item, i) => (
+              <MotionDiv 
+                key={i}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className="font-bold text-white text-sm">{item._id.department}</h4>
+                    <p className="text-xs text-muted-foreground">{item._id.faculty}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="inline-flex items-center gap-1.5 bg-primary/20 text-primary px-2 py-0.5 rounded text-[10px] font-bold border border-primary/20">
+                      <Users className="h-3 w-3" /> {item.studentCount}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-zinc-500 mt-2 pt-2 border-t border-white/5">
+                  <span className="bg-white/10 text-white px-2 py-0.5 rounded">{item._id.level} Level</span>
+                  {item._id.option && (
+                    <span className="bg-white/10 text-white px-2 py-0.5 rounded truncate max-w-[150px]">{item._id.option}</span>
+                  )}
+                  <span className="ml-auto">Updated: {new Date(item.lastUpdated).toLocaleDateString()}</span>
+                </div>
+              </MotionDiv>
+            ))}
+            {summaries.length === 0 && (
+              <div className="text-center py-10 border border-dashed border-white/10 rounded-xl">
+                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">No class lists uploaded yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

@@ -94,7 +94,7 @@ export default function Layout() {
                 onClick={() => navigate(link.path)}
               >
                 {location.pathname === link.path && (
-                  <motion.div layoutId="active-pill" className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />
+                  <MotionDiv layoutId="active-pill" className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />
                 )}
                 <link.icon className={cn("h-4 w-4 transition-transform duration-300", location.pathname === link.path && "scale-110")} />
                 {link.label}
@@ -109,11 +109,11 @@ export default function Layout() {
             onClick={handleProfileClick}
           >
             <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-inner ring-2 ring-black">
-              {user.name.charAt(0)}
+              {user.name?.charAt(0) || 'U'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-medium truncate text-white">{user.name}</p>
-              <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest font-semibold">{user.role.replace('_', ' ')}</p>
+              <p className="text-sm font-medium truncate text-white">{user.name || 'User'}</p>
+              <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest font-semibold">{user.role?.replace('_', ' ') || 'Student'}</p>
             </div>
           </div>
           <Button variant="outline" className="w-full justify-start gap-2 h-9 text-xs border-white/10 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 group transition-all" onClick={handleLogout}>

@@ -6,6 +6,11 @@ import SessionCard from '../../components/shared/SessionCard';
 import { Button } from '../../components/ui/button';
 import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import saveAs from 'file-saver';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { formatDate } from '../../lib/utils';
 
 export default function SessionList() {
   const [sessions, setSessions] = useState<any[]>([]);
@@ -29,6 +34,55 @@ export default function SessionList() {
     } catch(e) { toast.error('Failed to end'); }
   };
 
+  const handleExport = async (sessionId: string, format: 'xlsx' | 'pdf') => {
+    const toastId = toast.loading('Generating report...');
+    try {
+      const res = await api.get(`/attendance/session/${sessionId}/attendees`);
+      const data = res.data.map((r: any) => ({
+        RegNo: r.regNo,
+        Name: r.student.name,
+        Time: formatDate(r.markedAt),
+        Status: r.status.toUpperCase()
+      }));
+
+      if (data.length === 0) {
+        toast.dismiss(toastId);
+        toast.error('No attendance records found for this session.');
+        return;
+      }
+
+      if (format === 'xlsx') {
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], {type: 'application/octet-stream'});
+        saveAs(blob, `attendance_${sessionId}.xlsx`);
+      } else {
+        const doc = new jsPDF();
+        const session = sessions.find(s => s._id === sessionId);
+        const title = session ? `${session.course.code} - ${session.course.title}` : 'Attendance Report';
+        
+        doc.text(title, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Date: ${formatDate(new Date())}`, 14, 22);
+        
+        (doc as any).autoTable({
+          startY: 25,
+          head: [['Reg No', 'Name', 'Time', 'Status']],
+          body: data.map((row: any) => [row.RegNo, row.Name, row.Time, row.Status]),
+          theme: 'grid',
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [79, 70, 229] } // Indigo color
+        });
+        doc.save(`attendance_${sessionId}.pdf`);
+      }
+      toast.success('Export downloaded!', { id: toastId });
+    } catch (e) { 
+      toast.error('Export failed', { id: toastId });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -48,6 +102,7 @@ export default function SessionList() {
             session={s} 
             role="rep" 
             onAction={s.isActive ? handleEndSession : undefined}
+            onExport={handleExport}
           />
         ))}
         {sessions.length === 0 && <p className="text-muted-foreground col-span-full text-center py-10">No sessions found.</p>}

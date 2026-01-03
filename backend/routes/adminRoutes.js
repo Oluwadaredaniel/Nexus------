@@ -3,11 +3,11 @@ import express from 'express';
 import { 
   addFaculty, getFaculties, deleteFaculty, addDepartment, deleteDepartment,
   getCourses, addCourse, updateCourse, deleteCourse,
-  uploadClassList, assignClassRep, 
-  getAllStudents, deleteUser, getAllReps, demoteRep,
+  uploadClassList, getClassListSummaries, assignClassRep, 
+  getAllStudents, deleteUser, resetUserPassword, getAllReps, demoteRep,
   getAllActiveSessions, forceEndSession, 
   getLevels, addLevel, deleteLevel,
-  getAdmins, createSuperAdmin
+  getAdmins, createSuperAdmin, getAnalytics
 } from '../controllers/adminController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
@@ -37,7 +37,9 @@ router.delete('/courses/:id', deleteCourse);
 // People
 router.get('/students', getAllStudents);
 router.delete('/users/:id', deleteUser);
+router.put('/users/:id/reset-password', resetUserPassword); // New route
 router.post('/upload-classlist', uploadClassList);
+router.get('/classlist-summaries', getClassListSummaries); // New route
 router.post('/assign-classrep', assignClassRep);
 router.get('/reps', getAllReps);
 router.put('/reps/:id/demote', demoteRep);

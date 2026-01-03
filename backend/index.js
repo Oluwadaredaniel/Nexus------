@@ -48,9 +48,9 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/nexus')
     const adminExists = await User.findOne({ role: 'super_admin' });
     if (!adminExists) {
       await User.create({
-        regNo: 'SUPER_ADMIN',
-        password: 'admin',
-        name: 'System Administrator',
+        regNo: '202550604111HA',
+        password: 'Daniel_2009',
+        name: 'Oluwadare Daniel',
         role: 'super_admin'
       });
       console.log('Bootstrap: SUPER_ADMIN created (pw: admin)');

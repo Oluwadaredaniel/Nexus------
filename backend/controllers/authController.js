@@ -5,54 +5,104 @@ import Faculty from '../models/Faculty.js';
 import Level from '../models/Level.js';
 import jwt from 'jsonwebtoken';
 
-const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '30d' });
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '30d' });
+};
 
+// @desc    Signup Student
+// @route   POST /api/auth/signup
 export const signup = async (req, res) => {
   const { regNo, password, faculty, department, level, option } = req.body;
+
   try {
     const userExists = await User.findOne({ regNo });
-    if (userExists) return res.status(400).json({ message: 'User already exists' });
+    if (userExists) return res.status(400).json({ message: 'User account already exists. Please login.' });
 
-    // Validate against Class List
+    // 1. Strict Validation against Class List (Source of Truth)
     const validStudent = await ClassList.findOne({ regNo });
-    if (!validStudent) return res.status(403).json({ message: 'RegNo not found in class list.' });
-
-    if (validStudent.faculty !== faculty || validStudent.department !== department || validStudent.level !== level) {
-       return res.status(403).json({ message: 'Academic details do not match official records.' });
+    
+    if (!validStudent) {
+      return res.status(403).json({ message: 'Registration Number not found in the official class list. Contact Admin.' });
     }
 
+    // 2. Validate Context Match
+    if (
+      validStudent.faculty !== faculty ||
+      validStudent.department !== department ||
+      validStudent.level !== level
+    ) {
+       return res.status(403).json({ 
+         message: 'Academic details do not match the official record. Please ensure you selected the correct Faculty, Department, and Level.' 
+       });
+    }
+
+    // 3. Validate Option Match (if applicable)
+    // If the record has an option, the user must provide it correctly.
     const recordOption = validStudent.option || null;
     const userOption = option || null;
-    if (recordOption !== userOption) return res.status(403).json({ message: 'Option/Track mismatch.' });
 
+    if (recordOption !== userOption) {
+      return res.status(403).json({ 
+        message: recordOption 
+          ? `You must select the '${recordOption}' option as per the class list.`
+          : `Invalid Option selected. Your record does not have a sub-option.` 
+      });
+    }
+
+    // 4. Create User
     const user = await User.create({
-      regNo, password, name: validStudent.name,
-      faculty, department, level, option: recordOption, role: 'student'
+      regNo,
+      password,
+      name: validStudent.name, // Use name from Class List, not input
+      faculty,
+      department,
+      level,
+      option: recordOption,
+      role: 'student'
     });
 
     res.status(201).json({
-      _id: user._id, regNo: user.regNo, name: user.name, role: user.role,
+      _id: user._id,
+      regNo: user.regNo,
+      name: user.name,
+      role: user.role,
       token: generateToken(user._id)
     });
-  } catch (error) { res.status(500).json({ message: error.message }); }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
+// @desc    Login User
+// @route   POST /api/auth/login
 export const login = async (req, res) => {
   const { regNo, password } = req.body;
+
   try {
     const user = await User.findOne({ regNo });
     if (user && (await user.matchPassword(password))) {
       res.json({
-        _id: user._id, regNo: user.regNo, name: user.name, role: user.role,
-        department: user.department, level: user.level, option: user.option,
-        isPasswordChanged: user.isPasswordChanged, token: generateToken(user._id)
+        _id: user._id,
+        regNo: user.regNo,
+        name: user.name,
+        role: user.role,
+        faculty: user.faculty,
+        department: user.department,
+        option: user.option,
+        level: user.level,
+        isPasswordChanged: user.isPasswordChanged,
+        token: generateToken(user._id)
       });
     } else {
       res.status(401).json({ message: 'Invalid credentials' });
     }
-  } catch (error) { res.status(500).json({ message: error.message }); }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
+// @desc    Change Password
+// @route   POST /api/auth/change-password
 export const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
@@ -61,21 +111,74 @@ export const changePassword = async (req, res) => {
       user.password = newPassword;
       user.isPasswordChanged = true;
       await user.save();
-      res.json({ message: 'Password updated' });
+      res.json({ message: 'Password updated successfully' });
     } else {
       res.status(401).json({ message: 'Invalid current password' });
     }
-  } catch (error) { res.status(500).json({ message: error.message }); }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
+// @desc    Update User Profile (Self)
+// @route   PUT /api/auth/profile
+export const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.name = req.body.name || user.name;
+      
+      // Update Academic Context
+      if (req.body.faculty !== undefined) user.faculty = req.body.faculty;
+      if (req.body.department !== undefined) user.department = req.body.department;
+      if (req.body.level !== undefined) user.level = req.body.level;
+      if (req.body.option !== undefined) user.option = req.body.option;
+
+      if (req.body.password) {
+        user.password = req.body.password;
+      }
+
+      const updatedUser = await user.save();
+      
+      res.json({
+        _id: updatedUser._id,
+        regNo: updatedUser.regNo,
+        name: updatedUser.name,
+        role: updatedUser.role,
+        faculty: updatedUser.faculty,
+        department: updatedUser.department,
+        option: updatedUser.option,
+        level: updatedUser.level,
+        isPasswordChanged: updatedUser.isPasswordChanged,
+        token: generateToken(updatedUser._id)
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get Current User Profile
+// @route   GET /api/auth/me
+export const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get Public Academic Data (Faculties, Depts, Levels)
+// @route   GET /api/auth/academic-data
 export const getAcademicData = async (req, res) => {
   try {
     const faculties = await Faculty.find({});
     const levels = await Level.find({}).sort({ name: 1 });
     res.json({ faculties, levels });
-  } catch (error) { res.status(500).json({ message: error.message }); }
-};
-
-export const getMe = async (req, res) => {
-  res.json(req.user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

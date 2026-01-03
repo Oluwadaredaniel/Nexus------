@@ -119,6 +119,17 @@ export const deleteUser = async (req, res) => {
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
+export const resetUserPassword = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if(!user) return res.status(404).json({ message: 'User not found'});
+    user.password = 'password123'; 
+    user.isPasswordChanged = false;
+    await user.save();
+    res.json({ message: 'Password reset to: password123' });
+  } catch (error) { res.status(500).json({ message: error.message }); }
+}
+
 export const getAllReps = async (req, res) => {
   try {
     const reps = await User.find({ role: 'class_rep' }).select('-password');
@@ -145,19 +156,24 @@ export const uploadClassList = async (req, res) => {
     const enrichedStudents = students
       .filter(s => s.regNo && s.name)
       .map(s => ({
-        regNo: s.regNo,
-        name: s.name,
+        regNo: String(s.regNo).toUpperCase().trim(),
+        name: String(s.name).trim(),
         faculty: context.faculty,
         department: context.department,
         level: context.level,
         option: context.option || null,
       }));
 
+    if (enrichedStudents.length === 0) {
+      return res.status(400).json({ message: 'No valid rows found. Please check your Excel headers contain "RegNo" and "Name".' });
+    }
+
     const classListOps = enrichedStudents.map(s => ({
       updateOne: { filter: { regNo: s.regNo }, update: { $set: s }, upsert: true }
     }));
     await ClassList.bulkWrite(classListOps);
     
+    // Also update existing users context if they exist
     const userOps = enrichedStudents.map(s => ({
       updateOne: {
         filter: { regNo: s.regNo },
@@ -166,18 +182,70 @@ export const uploadClassList = async (req, res) => {
     }));
     if (userOps.length > 0) await User.bulkWrite(userOps);
     
-    res.json({ message: `Processed ${enrichedStudents.length} students.` });
+    res.json({ message: `Successfully processed ${enrichedStudents.length} students.` });
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
+export const getClassListSummaries = async (req, res) => {
+  try {
+    const summary = await ClassList.aggregate([
+      {
+        $group: {
+          _id: {
+            faculty: "$faculty",
+            department: "$department",
+            level: "$level",
+            option: "$option"
+          },
+          studentCount: { $sum: 1 },
+          lastUpdated: { $max: "$updatedAt" }
+        }
+      },
+      { $sort: { "_id.faculty": 1, "_id.department": 1, "_id.level": 1 } }
+    ]);
+    res.json(summary);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
 export const assignClassRep = async (req, res) => {
-  const { regNo } = req.body;
+  const { regNo, faculty, department, level, option } = req.body;
+  
+  if (!regNo || !faculty || !department || !level) {
+    return res.status(400).json({ message: 'Missing fields: Faculty, Dept, Level, and RegNo are required.' });
+  }
+
   try {
-    const user = await User.findOne({ regNo });
-    if (!user) return res.status(404).json({ message: 'Student not found.' });
+    // 1. Strict Check: Does this RegNo exist in the specified Class List context?
+    const validInList = await ClassList.findOne({
+      regNo: String(regNo).toUpperCase().trim(),
+      faculty,
+      department,
+      level,
+      option: option || null
+    });
+
+    if (!validInList) {
+      return res.status(404).json({ 
+        message: `Student ${regNo} is not in the uploaded Class List for ${department} (${level}). Please upload the list first.` 
+      });
+    }
+
+    // 2. Check User Account
+    const user = await User.findOne({ regNo: String(regNo).toUpperCase().trim() });
+    if (!user) {
+      return res.status(404).json({ message: 'Student account not found. The student must sign up first.' });
+    }
+
+    // 3. Promote
     user.role = 'class_rep';
+    // Ensure user context matches the rep assignment
+    user.faculty = faculty;
+    user.department = department;
+    user.level = level;
+    user.option = option || null;
+    
     await user.save();
-    res.json({ message: `User ${regNo} is now a Class Rep` });
+    res.json({ message: `Success! ${user.name} is now Class Rep for ${department} ${level}` });
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
@@ -219,10 +287,30 @@ export const forceEndSession = async (req, res) => {
 // --- Analytics ---
 export const getAnalytics = async (req, res) => {
   try {
+    // 1. User Counts
     const totalStudents = await User.countDocuments({ role: 'student' });
+    const totalReps = await User.countDocuments({ role: 'class_rep' });
+    
+    // 2. Academic Structure Counts
+    const totalFaculties = await Faculty.countDocuments();
+    // Sum length of departments array in all faculties
+    const faculties = await Faculty.find({});
+    const totalDepartments = faculties.reduce((acc, f) => acc + f.departments.length, 0);
+
+    // 3. Operational Counts
     const totalCourses = await Course.countDocuments();
     const totalAttendance = await Attendance.countDocuments({ status: 'present' });
+    
     const recentActivity = await Attendance.find().sort({ createdAt: -1 }).limit(5).populate('student', 'name regNo');
-    res.json({ totalStudents, totalCourses, totalAttendance, recentActivity });
+    
+    res.json({ 
+      totalStudents, 
+      totalReps,
+      totalFaculties,
+      totalDepartments,
+      totalCourses, 
+      totalAttendance, 
+      recentActivity 
+    });
   } catch (error) { res.status(400).json({ message: error.message }); }
 };

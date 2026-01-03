@@ -3,18 +3,34 @@ import React, { useEffect, useState } from 'react';
 import api from '../../lib/api';
 import { Card, CardContent } from '../../components/ui/card';
 import { motion } from 'framer-motion';
-import { QrCode, Wifi, ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Users, Radio, Calendar } from 'lucide-react';
 
 const MotionDiv = motion.div as any;
 
 export default function RepProfile() {
   const [profile, setProfile] = useState<any>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/auth/me').then(res => setProfile(res.data)).catch(console.error);
+    const fetchData = async () => {
+      try {
+        const [meRes, sessRes] = await Promise.all([
+          api.get('/auth/me'),
+          api.get('/rep/sessions')
+        ]);
+        setProfile(meRes.data);
+        setSessions(sessRes.data);
+      } catch (e) { console.error(e); }
+      finally { setLoading(false); }
+    };
+    fetchData();
   }, []);
 
-  if (!profile) return <div className="p-10 text-center animate-pulse">Loading Profile...</div>;
+  if (loading || !profile) return <div className="p-10 text-center animate-pulse text-muted-foreground">Loading Profile...</div>;
+
+  const totalSessions = sessions.length;
+  const activeSessions = sessions.filter(s => s.isActive).length;
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center space-y-8">
@@ -46,14 +62,14 @@ export default function RepProfile() {
             </div>
 
             {/* Avatar */}
-            <div className="w-40 h-40 rounded-full p-1 bg-gradient-to-tr from-amber-500 to-yellow-300 mb-6 shadow-xl">
+            <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-amber-500 to-yellow-300 mb-6 shadow-xl">
               <div className="w-full h-full rounded-full bg-black/80 backdrop-blur-md flex items-center justify-center text-4xl font-bold text-white">
                 {profile.name.charAt(0)}
               </div>
             </div>
 
             {/* Info */}
-            <div className="text-center space-y-2 mb-8">
+            <div className="text-center space-y-2 mb-8 w-full">
               <h3 className="text-2xl font-bold text-white">{profile.name}</h3>
               <p className="text-amber-400 font-mono text-lg tracking-wider font-bold">CLASS REP</p>
               <p className="text-sm text-muted-foreground">{profile.regNo}</p>
@@ -62,11 +78,25 @@ export default function RepProfile() {
               </div>
             </div>
 
-            {/* QR Code Placeholder */}
-            <div className="mt-auto bg-white p-2 rounded-xl">
-               <QrCode className="h-24 w-24 text-black" />
+            {/* Rep Metrics (Replaces QR) */}
+            <div className="mt-auto w-full space-y-3">
+               <div className="grid grid-cols-2 gap-3">
+                 <div className="p-4 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md flex flex-col items-center">
+                    <Radio className="h-5 w-5 text-amber-500 mb-2" />
+                    <span className="text-2xl font-bold text-white">{totalSessions}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Sessions</span>
+                 </div>
+                 <div className="p-4 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md flex flex-col items-center">
+                    <div className={`h-2 w-2 rounded-full mb-3 ${activeSessions > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
+                    <span className="text-2xl font-bold text-white">{activeSessions}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Active Now</span>
+                 </div>
+               </div>
+               
+               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+                 <p className="text-xs text-amber-200/80">Authorized to create and manage academic sessions for your cohort.</p>
+               </div>
             </div>
-            <p className="text-[10px] text-white/40 mt-2 uppercase tracking-widest">Admin Authorization</p>
 
           </CardContent>
         </Card>

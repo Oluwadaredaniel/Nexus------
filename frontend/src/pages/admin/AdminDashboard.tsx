@@ -1,8 +1,8 @@
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Users, BookOpen, UserCheck, Activity, ArrowUpRight, GraduationCap } from 'lucide-react';
+import { Users, BookOpen, UserCheck, Activity, ArrowUpRight, GraduationCap, Building2, Layers, ShieldCheck } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../../store/authStore';
@@ -14,7 +14,6 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [myHistory, setMyHistory] = useState<any[]>([]);
 
-  // Mock data for chart - in production calculate from actual attendance
   const trendData = [
     { name: 'Mon', count: 420 },
     { name: 'Tue', count: 350 },
@@ -52,7 +51,7 @@ export default function AdminDashboard() {
   const myAttendanceCount = myHistory.filter(h => h.status === 'present').length;
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+    <MotionDiv variants={container} initial="hidden" animate="show" className="space-y-8">
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-white">System Overview</h2>
@@ -67,11 +66,32 @@ export default function AdminDashboard() {
         </div>
       </div>
       
+      {/* Detailed Stats Row based on Screenshot Requirement */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Students" value={stats.totalStudents} icon={Users} change="+12%" />
-        <StatCard title="Active Courses" value={stats.totalCourses} icon={BookOpen} change="+4" />
-        <StatCard title="Total Attendance" value={stats.totalAttendance} icon={UserCheck} change="+854" />
-        <StatCard title="System Health" value="99.9%" icon={Activity} change="Stable" />
+        <StatCard 
+          title="Total Faculties" 
+          value={stats.totalFaculties || 0} 
+          icon={Building2} 
+          color="text-blue-400" 
+        />
+        <StatCard 
+          title="Departments" 
+          value={stats.totalDepartments || 0} 
+          icon={Layers} 
+          color="text-indigo-400" 
+        />
+        <StatCard 
+          title="Active Class Reps" 
+          value={stats.totalReps || 0} 
+          icon={ShieldCheck} 
+          color="text-amber-400" 
+        />
+        <StatCard 
+          title="Registered Students" 
+          value={stats.totalStudents || 0} 
+          icon={Users} 
+          color="text-emerald-400" 
+        />
       </div>
 
       <div className="grid gap-6 md:grid-cols-7">
@@ -116,7 +136,7 @@ export default function AdminDashboard() {
           <CardContent>
              <div className="space-y-6">
                {stats.recentActivity.map((act: any, i: number) => (
-                 <motion.div 
+                 <MotionDiv 
                    key={act._id} 
                    initial={{ opacity: 0, x: 20 }}
                    animate={{ opacity: 1, x: 0 }}
@@ -133,30 +153,27 @@ export default function AdminDashboard() {
                    <div className="font-mono text-xs text-muted-foreground bg-white/5 px-2 py-1 rounded">
                      {new Date(act.markedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                    </div>
-                 </motion.div>
+                 </MotionDiv>
                ))}
                {stats.recentActivity.length === 0 && <p className="text-sm text-muted-foreground text-center py-10">Waiting for live data...</p>}
              </div>
           </CardContent>
         </MotionDiv>
       </div>
-    </motion.div>
+    </MotionDiv>
   );
 }
 
-function StatCard({ title, value, icon: Icon, change }: any) {
+function StatCard({ title, value, icon: Icon, color = "text-zinc-500" }: any) {
   return (
     <MotionDiv variants={{ hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } }}>
       <Card className="glass-card border-white/5 hover:bg-white/5 transition-colors group">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{title}</CardTitle>
-          <Icon className="h-4 w-4 text-zinc-500 group-hover:text-primary transition-colors" />
+          <Icon className={`h-4 w-4 ${color}`} />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-white">{value}</div>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-            <span className="text-emerald-500 flex items-center"><ArrowUpRight className="h-3 w-3" /> {change}</span> from last week
-          </p>
         </CardContent>
       </Card>
     </MotionDiv>
