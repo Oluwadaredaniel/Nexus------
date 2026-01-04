@@ -7,6 +7,8 @@ import api from '../lib/api';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
+const MotionDiv = motion.div as any;
+
 export default function Signup() {
   const { register, handleSubmit, watch, setValue } = useForm();
   const navigate = useNavigate();
@@ -16,8 +18,11 @@ export default function Signup() {
 
   const selFac = watch('faculty');
   const selDept = watch('department');
+  
+  // Dynamic Options Logic
   const departments = meta.faculties.find((f: any) => f.name === selFac)?.departments || [];
-  const options = departments.find((d: any) => d.name === selDept)?.options || [];
+  const selectedDeptData = departments.find((d: any) => d.name === selDept);
+  const options = selectedDeptData?.options || [];
 
   useEffect(() => { api.get('/auth/academic-data').then(res => setMeta(res.data)); }, []);
 
@@ -27,14 +32,14 @@ export default function Signup() {
       const res = await api.post('/auth/signup', data);
       setCredentials(res.data, res.data.token);
       toast.success('Account created');
-      navigate('/change-password');
+      navigate('/auth/change-password');
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed'); }
     finally { setLoading(false); }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black p-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-lg p-8 rounded-3xl glass border border-white/10">
+      <MotionDiv initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-lg p-8 rounded-3xl glass border border-white/10">
         <h2 className="text-2xl font-bold text-white text-center mb-6">Student Registration</h2>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <input {...register('regNo')} placeholder="Reg No" className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white" required />
@@ -67,7 +72,7 @@ export default function Signup() {
         </form>
         <p className="mt-4 text-center text-xs text-yellow-500">Must match official class list data exactly.</p>
         <div className="mt-4 text-center text-sm"><Link to="/login" className="text-zinc-400 hover:text-white">Back to Login</Link></div>
-      </motion.div>
+      </MotionDiv>
     </div>
   );
 }
