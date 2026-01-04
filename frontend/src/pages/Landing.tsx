@@ -1,201 +1,286 @@
 
-import React from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import api from '../lib/api';
 import { Button } from '../components/ui/button';
-import { usePwaStore } from '../store/pwaStore';
 import { 
-  ChevronRight, ShieldCheck, Users, BarChart3, Radio, Download, 
-  Smartphone, Zap, Globe, Layers, ArrowRight, BookOpen, Lock, Activity,
-  Server, Fingerprint, History, MapPin, QrCode, CheckCircle2
+  ChevronRight, ShieldCheck, Zap, Radio, 
+  Smartphone, BarChart3, ArrowRight, Download, Users, Layers
 } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
-import toast from 'react-hot-toast';
 
 const MotionDiv = motion.div as any;
-
-// Mock Data for Analytics Preview
-const chartData = [
-  { name: 'W1', value: 400 },
-  { name: 'W2', value: 600 },
-  { name: 'W3', value: 550 },
-  { name: 'W4', value: 800 },
-  { name: 'W5', value: 750 },
-  { name: 'W6', value: 950 },
-  { name: 'W7', value: 1100 },
-];
+const MotionH1 = motion.h1 as any;
+const MotionP = motion.p as any;
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { isInstallable, installPwa } = usePwaStore();
-  const { scrollYProgress } = useScroll();
-  const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ students: 0, sessions: 0, active: 0 });
+  const { scrollY } = useScroll();
+  
+  // Parallax effects
+  const heroY = useTransform(scrollY, [0, 500], [0, 150]);
+  const opacity = useTransform(scrollY, [0, 300], [1, 0]);
 
-  const handleInstallClick = async () => {
-    if (isInstallable) {
-      await installPwa();
-    } else {
-      toast.error('App is already installed or not supported in this browser.');
-    }
-  };
+  useEffect(() => {
+    // Simulate splash screen delay + fetch stats
+    const init = async () => {
+      try {
+        const res = await api.get('/auth/stats');
+        setStats(res.data);
+      } catch(e) {
+        // Fallback for demo
+        setStats({ students: 1250, sessions: 85, active: 3 });
+      }
+      setTimeout(() => setLoading(false), 2200);
+    };
+    init();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden font-sans selection:bg-indigo-500/30">
-      
-      {/* --- Ambient Background --- */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[800px] h-[800px] bg-indigo-600/10 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '4s' }} />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[100px] mix-blend-screen" />
-        <div className="absolute inset-0 bg-[url('/bg-grain.png')] opacity-20 mix-blend-overlay" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#020617]/80 to-[#020617]" />
-      </div>
+    <>
+      <AnimatePresence>
+        {loading && <SplashScreen />}
+      </AnimatePresence>
 
-      {/* --- Navbar --- */}
-      <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#020617]/80 backdrop-blur-xl transition-all duration-300 supports-[backdrop-filter]:bg-[#020617]/60">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div className="min-h-screen bg-[#020617] text-white font-sans selection:bg-primary/30 overflow-x-hidden">
+        
+        {/* Navbar */}
+        <nav className="fixed top-0 left-0 right-0 z-40 p-6 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <span className="font-bold text-white text-lg">N</span>
+            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="font-bold text-white text-xl">N</span>
             </div>
-            <span className="font-bold tracking-tight text-xl text-white">NEXUS</span>
+            <span className="font-bold text-xl tracking-tight hidden md:block">NEXUS</span>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-400">
-              <a href="#gallery" className="hover:text-white transition-colors">Interface</a>
-              <a href="#features" className="hover:text-white transition-colors">Capabilities</a>
-              <a href="#security" className="hover:text-white transition-colors">Security</a>
-            </div>
-            <div className="h-6 w-px bg-white/10 hidden md:block" />
-            <Button size="sm" onClick={() => navigate('/login')} className="bg-white text-black hover:bg-zinc-200 font-semibold rounded-full px-6 h-10 shadow-lg shadow-white/5 transition-all hover:scale-105">
-              Access Platform
-            </Button>
+          <Button variant="outline" size="sm" className="rounded-full border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 text-xs" onClick={() => navigate('/login')}>
+            Log In
+          </Button>
+        </nav>
+
+        {/* Hero Section */}
+        <section className="relative min-h-[90vh] flex flex-col items-center justify-center text-center px-6 pt-20 overflow-hidden">
+          {/* Ambient Background */}
+          <div className="absolute inset-0 pointer-events-none">
+             <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
+             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px]" />
+             <div className="absolute inset-0 bg-[url('/bg-grain.png')] opacity-20 mix-blend-overlay" />
           </div>
-        </div>
-      </nav>
 
-      {/* --- Hero Section --- */}
-      <section className="relative z-10 pt-40 pb-20 md:pt-52 md:pb-32 px-6 min-h-[90vh] flex flex-col justify-center">
-        <div className="max-w-5xl mx-auto text-center space-y-8">
-          
-          <MotionDiv 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex flex-col items-center gap-3"
-          >
-            <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 backdrop-blur-md">
-                <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
-                </span>
-                <span className="text-sm font-semibold text-indigo-300 uppercase tracking-widest">System Operational v1.0</span>
-            </div>
-            
-            {/* OAU Exclusivity Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/5 backdrop-blur-md">
-                <MapPin className="h-3.5 w-3.5 text-yellow-500" />
-                <span className="text-xs font-semibold text-yellow-500 tracking-wide">Exclusively at Obafemi Awolowo University</span>
-            </div>
-          </MotionDiv>
-
-          <MotionDiv 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-          >
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[1.05] text-white">
-              The Operating System <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-cyan-300">
-                for Modern Academia.
+          <MotionDiv style={{ y: heroY, opacity }} className="relative z-10 max-w-4xl space-y-8">
+            <MotionDiv 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: 2.3, duration: 0.8 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-md"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
-            </h1>
-          </MotionDiv>
+              <span className="text-[10px] uppercase tracking-widest font-bold text-primary">System Online</span>
+            </MotionDiv>
 
-          <MotionDiv 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="max-w-2xl mx-auto"
-          >
-            <p className="text-lg md:text-xl text-zinc-400 leading-relaxed font-light">
-              A unified digital ecosystem designed for forward-thinking institutions. 
-              Currently powering academic coordination at <span className="text-white font-medium">OAU</span>.
-            </p>
-          </MotionDiv>
-
-          <MotionDiv 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-5 justify-center items-center pt-8"
-          >
-            <Button 
-              size="lg" 
-              onClick={() => navigate('/login')} 
-              className="h-14 px-8 text-lg rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_50px_-12px_rgba(99,102,241,0.5)] transition-all hover:scale-105 border-0 ring-1 ring-white/10"
+            <MotionH1 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 2.4, duration: 0.8, ease: "easeOut" }}
+              className="text-5xl md:text-8xl font-bold tracking-tighter leading-[0.95]"
             >
-              Explore Platform <ChevronRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={handleInstallClick}
-              className="h-14 px-8 text-lg rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md transition-all hover:scale-105 text-white"
-            >
-              <Download className="mr-2 h-5 w-5" /> Install App
-            </Button>
-          </MotionDiv>
-        </div>
-      </section>
+              Your Campus <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-300 to-cyan-300">
+                In Your Pocket.
+              </span>
+            </MotionH1>
 
-      {/* --- Stats Strip --- */}
-      <section className="border-y border-white/5 bg-white/[0.02] backdrop-blur-sm relative z-10">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { label: 'Active OAU Students', value: '15k+' },
-              { label: 'Daily Sessions', value: '500+' },
-              { label: 'Uptime', value: '99.9%' },
-              { label: 'Faculties', value: '13+' },
-            ].map((stat, i) => (
-              <MotionDiv 
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
+            <MotionP 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2.6, duration: 0.8 }}
+              className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed"
+            >
+              Experience the next generation of academic management. Real-time attendance, instant notifications, and offline-first reliability.
+            </MotionP>
+
+            <MotionDiv 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 2.8, duration: 0.5 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4"
+            >
+              <Button 
+                size="lg" 
+                className="h-14 px-10 rounded-full text-lg font-bold shadow-[0_0_40px_-10px_rgba(139,92,246,0.6)] hover:scale-105 transition-transform"
+                onClick={() => navigate('/signup')}
               >
-                <div className="text-3xl md:text-4xl font-bold text-white mb-1">{stat.value}</div>
-                <div className="text-sm text-zinc-500 uppercase tracking-widest">{stat.label}</div>
-              </MotionDiv>
-            ))}
+                Get Started <ChevronRight className="ml-1 h-5 w-5" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="h-14 px-10 rounded-full text-lg border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md"
+                onClick={() => navigate('/login')}
+              >
+                Member Login
+              </Button>
+            </MotionDiv>
+          </MotionDiv>
+        </section>
+
+        {/* Stats Scroller */}
+        <div className="w-full border-y border-white/5 bg-white/[0.02] backdrop-blur-sm overflow-hidden py-8">
+           <div className="max-w-7xl mx-auto px-6 grid grid-cols-3 gap-8 text-center">
+              <StatItem value={stats.students.toLocaleString()} label="Students" delay={0} />
+              <StatItem value={stats.sessions.toLocaleString()} label="Sessions" delay={0.2} />
+              <StatItem value={stats.active.toLocaleString()} label="Active Now" delay={0.4} isLive />
+           </div>
+        </div>
+
+        {/* Features Grid */}
+        <section className="py-24 px-6 relative z-10">
+          <div className="max-w-6xl mx-auto space-y-16">
+            <div className="text-center space-y-4">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Engineered for Speed</h2>
+              <p className="text-zinc-400">Native-grade performance on the web.</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+               <FeatureCard 
+                 icon={Radio} 
+                 title="Real-Time Sync" 
+                 desc="Attendance data propagates instantly across all dashboards using WebSocket technology."
+               />
+               <FeatureCard 
+                 icon={Smartphone} 
+                 title="PWA Ready" 
+                 desc="Install on your home screen. Works offline. Zero app store friction."
+               />
+               <FeatureCard 
+                 icon={ShieldCheck} 
+                 title="Geo-Fencing" 
+                 desc="Verify physical presence with location-based attendance validation."
+               />
+               <FeatureCard 
+                 icon={Layers} 
+                 title="Dynamic Hierarchy" 
+                 desc="Flexible academic structure supporting Faculties, Departments, and detailed Options."
+               />
+               <FeatureCard 
+                 icon={BarChart3} 
+                 title="Instant Analytics" 
+                 desc="Visual insights into attendance trends and participation rates."
+               />
+               <FeatureCard 
+                 icon={Zap} 
+                 title="Low Latency" 
+                 desc="Optimized for edge performance, ensuring smooth interactions even on mobile data."
+               />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* --- Visual Gallery (New Section) --- */}
-      <section id="gallery" className="py-32 bg-gradient-to-b from-[#020617] to-[#0f172a] relative z-10 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 text-center mb-20">
-           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Designed for Experience</h2>
-           <p className="text-zinc-400 max-w-2xl mx-auto text-lg">A native-grade interface that feels natural on any device. Dark mode by default.</p>
-        </div>
+        {/* CTA */}
+        <section className="py-32 px-6 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary/5 blur-3xl pointer-events-none" />
+          <MotionDiv 
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="relative z-10 max-w-3xl mx-auto space-y-8"
+          >
+            <h2 className="text-4xl md:text-6xl font-bold tracking-tight">Ready to join?</h2>
+            <p className="text-xl text-zinc-400">Access your academic portal today.</p>
+            <Button size="lg" className="h-16 px-12 rounded-full text-xl font-bold bg-white text-black hover:bg-zinc-200 transition-all hover:scale-105" onClick={() => navigate('/login')}>
+              Launch App <ArrowRight className="ml-2 h-6 w-6" />
+            </Button>
+          </MotionDiv>
+        </section>
 
-        <div className="flex flex-col lg:flex-row justify-center items-center gap-12 lg:gap-20 relative px-6">
-           {/* Background Glow */}
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-indigo-500/20 blur-[120px] rounded-full pointer-events-none" />
+        {/* Footer */}
+        <footer className="border-t border-white/5 py-12 px-6 bg-black/20 text-center">
+          <div className="flex justify-center items-center gap-2 mb-4 opacity-50">
+            <div className="h-6 w-6 rounded-lg bg-white/20 flex items-center justify-center">
+              <span className="font-bold text-[10px]">N</span>
+            </div>
+            <span className="font-bold text-sm tracking-widest">NEXUS</span>
+          </div>
+          <p className="text-xs text-zinc-600">© 2024 NEXUS Academic Suite. Built for Performance.</p>
+        </footer>
 
-           {/* Phone 1: Dashboard */}
-           <div className="relative z-10 transform lg:translate-y-12">
-              <PhoneFrame>
-                 <div className="p-5 pt-12 flex flex-col h-full bg-[#09090b]">
-                    <div className="flex justify-between items-center mb-6">
-                       <div>
-                          <div className="text-xs text-zinc-500 uppercase">OAU Student</div>
-                          <div className="text-xl font-bold text-white">Dashboard</div>
-                       </div>
-                       <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-cyan-500" />
-                    </div>
-                    <div className="p-4 rounded-2xl bg-indigo-600 mb-4 shadow-lg shadow-indigo-500/20">
+      </div>
+    </>
+  );
+}
+
+function SplashScreen() {
+  return (
+    <MotionDiv 
+      className="fixed inset-0 z-50 bg-[#020617] flex items-center justify-center"
+      exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
+    >
+      <div className="relative">
+        <MotionDiv 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="h-24 w-24 bg-gradient-to-tr from-primary to-cyan-500 rounded-3xl flex items-center justify-center shadow-[0_0_60px_-10px_rgba(139,92,246,0.5)]"
+        >
+          <span className="text-5xl font-bold text-white">N</span>
+        </MotionDiv>
+        <MotionDiv 
+          initial={{ width: 0 }}
+          animate={{ width: "100%" }}
+          transition={{ delay: 0.5, duration: 1.5, ease: "easeInOut" }}
+          className="absolute -bottom-8 left-0 h-1 bg-white/20 rounded-full overflow-hidden"
+        >
+          <MotionDiv 
+            className="h-full bg-primary"
+            initial={{ x: "-100%" }}
+            animate={{ x: "0%" }}
+            transition={{ delay: 0.5, duration: 1.5, ease: "easeInOut" }}
+          />
+        </MotionDiv>
+      </div>
+    </MotionDiv>
+  );
+}
+
+function StatItem({ value, label, delay, isLive }: any) {
+  return (
+    <MotionDiv 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay, duration: 0.5 }}
+      className="flex flex-col items-center"
+    >
+      <div className="text-4xl md:text-5xl font-bold text-white mb-2 flex items-center gap-2">
+        {value}
+        {isLive && <span className="flex h-3 w-3 relative">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+        </span>}
+      </div>
+      <div className="text-xs text-zinc-500 uppercase tracking-widest font-medium">{label}</div>
+    </MotionDiv>
+  )
+}
+
+function FeatureCard({ icon: Icon, title, desc }: any) {
+  return (
+    <MotionDiv 
+      whileHover={{ y: -5 }}
+      className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-primary/20 hover:bg-white/[0.04] transition-all group"
+    >
+      <div className="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center text-zinc-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors mb-6">
+        <Icon className="h-6 w-6" />
+      </div>
+      <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
+      <p className="text-sm text-zinc-400 leading-relaxed">{desc}</p>
+    </MotionDiv>
+  )
+            }-indigo-600 mb-4 shadow-lg shadow-indigo-500/20">
                        <div className="flex justify-between items-start mb-4">
                           <span className="text-xs font-bold bg-black/20 px-2 py-1 rounded text-white">CSC 401</span>
                           <Radio className="h-4 w-4 animate-pulse text-white" />
