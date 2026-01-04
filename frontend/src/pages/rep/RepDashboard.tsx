@@ -66,7 +66,7 @@ export default function RepDashboard() {
                </div>
             </div>
             <div className="mt-4 h-2 w-full bg-white/5 rounded-full overflow-hidden">
-               <motion.div 
+               <MotionDiv 
                  initial={{ width: 0 }} 
                  animate={{ width: `${onboardingRate}%` }} 
                  className="h-full bg-primary"
