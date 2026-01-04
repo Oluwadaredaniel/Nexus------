@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import ClassList from '../models/ClassList.js';
 import Faculty from '../models/Faculty.js';
 import Level from '../models/Level.js';
+import Session from '../models/Session.js';
 import jwt from 'jsonwebtoken';
 
 const generateToken = (id) => {
@@ -178,6 +179,26 @@ export const getAcademicData = async (req, res) => {
     const faculties = await Faculty.find({});
     const levels = await Level.find({}).sort({ name: 1 });
     res.json({ faculties, levels });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get Public Stats for Landing Page
+// @route   GET /api/auth/stats
+export const getPublicStats = async (req, res) => {
+  try {
+    const totalStudents = await User.countDocuments({ role: 'student' });
+    const totalSessions = await Session.countDocuments({});
+    
+    // Active sessions (optional logic, or simply total count)
+    const activeSessions = await Session.countDocuments({ isActive: true });
+
+    res.json({ 
+      students: totalStudents, 
+      sessions: totalSessions,
+      active: activeSessions
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
