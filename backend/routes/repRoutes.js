@@ -9,7 +9,8 @@ import { protect, authorize } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 router.use(protect);
-router.use(authorize('class_rep', 'super_admin'));
+// Allow all rep types + super admin
+router.use(authorize('class_rep', 'dept_rep', 'faculty_rep', 'super_admin'));
 
 router.post('/sessions', createSession);
 router.get('/sessions', getMySessions);
