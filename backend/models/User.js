@@ -6,10 +6,14 @@ const userSchema = new mongoose.Schema({
   regNo: { type: String, required: true, unique: true, uppercase: true },
   password: { type: String, required: true },
   name: { type: String, required: true },
-  role: { type: String, enum: ['super_admin', 'class_rep', 'student'], default: 'student' },
+  role: { 
+    type: String, 
+    enum: ['super_admin', 'faculty_rep', 'dept_rep', 'class_rep', 'student'], 
+    default: 'student' 
+  },
   faculty: { type: String },
   department: { type: String },
-  option: { type: String },
+  option: { type: String }, // For sub-tracks
   level: { type: String },
   isPasswordChanged: { type: Boolean, default: false },
 }, { timestamps: true });
