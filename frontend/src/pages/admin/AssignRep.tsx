@@ -5,7 +5,7 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { ShieldCheck, UserSearch, AlertCircle, Building2, Layers, BarChart } from 'lucide-react';
+import { ShieldCheck, UserSearch, AlertCircle, Building2, Layers, BarChart, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MotionDiv = motion.div as any;
@@ -14,15 +14,14 @@ export default function AssignRep() {
   const { register, handleSubmit, reset, watch, setValue } = useForm();
   const [loading, setLoading] = useState(false);
   
-  // Data State
   const [faculties, setFaculties] = useState<any[]>([]);
   const [levels, setLevels] = useState<any[]>([]);
 
-  // Watchers for dynamic dropdowns
+  // Watchers
   const selectedFaculty = watch('faculty');
   const selectedDept = watch('department');
+  const selectedRole = watch('role');
 
-  // Derived Data
   const departments = faculties.find(f => f.name === selectedFaculty)?.departments || [];
   const selectedDeptData = departments.find((d: any) => d.name === selectedDept);
   const options = selectedDeptData?.options || [];
@@ -41,19 +40,14 @@ export default function AssignRep() {
     fetchData();
   }, []);
 
-  // Reset dependents when parents change
+  // Cascading Resets
   useEffect(() => { setValue('department', ''); setValue('option', ''); }, [selectedFaculty, setValue]);
   useEffect(() => { setValue('option', ''); }, [selectedDept, setValue]);
 
   const onSubmit = async (data: any) => {
     setLoading(true);
     try {
-      // Ensure option is null if empty string (for backend matching)
-      const payload = {
-        ...data,
-        option: data.option || null
-      };
-      
+      const payload = { ...data, option: data.option || null };
       const res = await api.post('/admin/assign-classrep', payload);
       toast.success(res.data.message);
       reset();
@@ -67,15 +61,11 @@ export default function AssignRep() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Assign Class Representative</h2>
-        <p className="text-muted-foreground">Select the target cohort and assign a student.</p>
+        <h2 className="text-3xl font-bold tracking-tight">Assign Representative</h2>
+        <p className="text-muted-foreground">Grant leadership privileges to students.</p>
       </div>
 
-      <MotionDiv
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-      >
+      <MotionDiv initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
         <Card className="glass-card border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -85,6 +75,27 @@ export default function AssignRep() {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               
+              {/* Role Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2 text-primary">
+                  <Crown className="h-3 w-3" /> Representative Role
+                </label>
+                <select 
+                  {...register('role', { required: true })}
+                  className="w-full p-2.5 rounded-lg bg-primary/10 border border-primary/30 focus:ring-2 focus:ring-primary outline-none text-white font-medium"
+                >
+                  <option value="">Select Role Type</option>
+                  <option value="class_rep">Option / Class Rep (Lowest Level)</option>
+                  <option value="dept_rep">Department Rep (Whole Dept)</option>
+                  <option value="faculty_rep">Faculty Rep (Whole Faculty)</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {selectedRole === 'class_rep' && "Controls sessions for a specific Option/Track."}
+                  {selectedRole === 'dept_rep' && "Controls sessions for the entire Department (all options)."}
+                  {selectedRole === 'faculty_rep' && "Controls sessions for the entire Faculty."}
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2"><Building2 className="h-3 w-3" /> Faculty</label>
@@ -110,6 +121,8 @@ export default function AssignRep() {
                 </div>
               </div>
 
+              {/* Logic: Show Option selection IF options exist AND Role is 'class_rep' */}
+              {/* Dept/Faculty Reps still belong to an option academically, so we allow selection, but their POWER overrides it */}
               <AnimatePresence>
                 {options.length > 0 && (
                   <MotionDiv 
@@ -117,12 +130,17 @@ export default function AssignRep() {
                     animate={{ opacity: 1, height: 'auto' }}
                     className="space-y-2"
                   >
-                    <label className="text-sm font-medium text-primary">Option / Track</label>
+                    <label className="text-sm font-medium text-white/80">
+                      Option / Track 
+                      <span className="text-xs text-muted-foreground font-normal ml-2">
+                        (Student's academic track)
+                      </span>
+                    </label>
                     <select 
-                      {...register('option', { required: true })}
-                      className="w-full p-2.5 rounded-lg bg-secondary/50 border border-primary/30 focus:ring-2 focus:ring-primary outline-none"
+                      {...register('option')}
+                      className="w-full p-2.5 rounded-lg bg-secondary/50 border border-white/10 focus:ring-2 focus:ring-primary outline-none"
                     >
-                      <option value="">Select Option</option>
+                      <option value="">Select Option (If applicable)</option>
                       {options.map((o: any) => <option key={o._id} value={o.name}>{o.name}</option>)}
                     </select>
                   </MotionDiv>
@@ -155,13 +173,12 @@ export default function AssignRep() {
               <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex gap-3 items-start">
                 <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-yellow-200/80 leading-relaxed">
-                  The student must be in the uploaded class list for the selected <strong>Department & Level</strong>. 
-                  They must also have signed up on NEXUS.
+                  The student must be in the uploaded class list for the selected <strong>Department & Level</strong> and must have signed up on NEXUS.
                 </p>
               </div>
 
               <Button type="submit" className="w-full h-12 text-lg font-bold" disabled={loading}>
-                {loading ? 'Verifying & Assigning...' : 'Promote to Class Rep'}
+                {loading ? 'Assigning...' : 'Assign Role'}
               </Button>
             </form>
           </CardContent>
