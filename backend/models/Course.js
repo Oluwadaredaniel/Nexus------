@@ -4,7 +4,9 @@ import mongoose from 'mongoose';
 const courseSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true, uppercase: true },
   title: { type: String, required: true },
+  faculty: { type: String, required: true },
   department: { type: String, required: true },
+  option: { type: String }, // Optional: For courses specific to a track/option
   level: { type: String, required: true },
   semester: { type: String, default: '1' }
 }, { timestamps: true });
