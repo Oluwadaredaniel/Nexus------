@@ -38,12 +38,27 @@ export default function SessionList() {
     const toastId = toast.loading('Generating report...');
     try {
       const res = await api.get(`/attendance/session/${sessionId}/attendees`);
-      const data = res.data.map((r: any) => ({
-        RegNo: r.regNo,
-        Name: r.student.name,
-        Time: formatDate(r.markedAt),
-        Status: r.status.toUpperCase()
-      }));
+      
+      // Determine if session was broad (Faculty/Dept wide) to include extra columns
+      const session = sessions.find(s => s._id === sessionId);
+      const isBroad = session?.department === 'ALL' || session?.option === 'ALL';
+
+      const data = res.data.map((r: any) => {
+        const row: any = {
+          RegNo: r.regNo,
+          Name: r.student.name,
+        };
+        
+        // Add context columns if broad session
+        if (isBroad) {
+          row.Department = r.student.department || '-';
+          row.Option = r.student.option || '-';
+        }
+
+        row.Time = formatDate(r.markedAt);
+        row.Status = r.status.toUpperCase();
+        return row;
+      });
 
       if (data.length === 0) {
         toast.dismiss(toastId);
@@ -60,20 +75,25 @@ export default function SessionList() {
         saveAs(blob, `attendance_${sessionId}.xlsx`);
       } else {
         const doc = new jsPDF();
-        const session = sessions.find(s => s._id === sessionId);
         const title = session ? `${session.course.code} - ${session.course.title}` : 'Attendance Report';
         
         doc.text(title, 14, 15);
         doc.setFontSize(10);
-        doc.text(`Date: ${formatDate(new Date())}`, 14, 22);
+        doc.text(`Date: ${formatDate(new Date())} | Scope: ${isBroad ? 'Multi-Department' : 'Class'}`, 14, 22);
         
+        const headers = isBroad 
+          ? [['Reg No', 'Name', 'Dept', 'Option', 'Time', 'Status']]
+          : [['Reg No', 'Name', 'Time', 'Status']];
+
+        const body = data.map((row: any) => Object.values(row));
+
         (doc as any).autoTable({
           startY: 25,
-          head: [['Reg No', 'Name', 'Time', 'Status']],
-          body: data.map((row: any) => [row.RegNo, row.Name, row.Time, row.Status]),
+          head: headers,
+          body: body,
           theme: 'grid',
           styles: { fontSize: 8 },
-          headStyles: { fillColor: [79, 70, 229] } // Indigo color
+          headStyles: { fillColor: [79, 70, 229] }
         });
         doc.save(`attendance_${sessionId}.pdf`);
       }
