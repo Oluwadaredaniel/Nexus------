@@ -6,25 +6,41 @@ import User from '../models/User.js';
 
 export const getActiveSessions = async (req, res) => {
   try {
-    // Hierarchy of Matching:
-    // 1. Faculty Wide: Dept='ALL', Option='ALL'
-    // 2. Dept Wide: Dept=User.Dept, Option='ALL'
-    // 3. Option Specific: Dept=User.Dept, Option=User.Option
-    
-    // AND Must match Level (Assuming level is strict for now, or we could wildcard level too if needed)
-    // AND Must be Active and not Expired
+    const { department, level, option } = req.user;
 
-    const sessions = await Session.find({
+    // Student Visibility Query:
+    // 1. Must match Level (assuming sessions are level-locked)
+    // 2. Must be Active and not expired
+    // 3. Department matching:
+    //    a. Exact match on Dept AND (Option is match OR Option is 'ALL'/'null')
+    //    b. OR Session is Faculty Wide (Dept='ALL')
+    
+    // NOTE: 'option' in session of 'ALL' means it applies to everyone in that department.
+    // 'option' in session of null usually means General course.
+    
+    const query = {
       isActive: true,
       endTime: { $gt: Date.now() },
-      level: req.user.level,
+      level: level, 
       $or: [
-        { department: 'ALL', option: 'ALL' }, // Faculty Rep Session
-        { department: req.user.department, option: 'ALL' }, // Dept Rep Session
-        { department: req.user.department, option: req.user.option || null } // Class Rep Session
+        // 1. Exact Context Match (Same Dept, Same Option)
+        { department: department, option: option || null },
+        
+        // 2. Dept-Wide Sessions (Same Dept, 'ALL' options)
+        { department: department, option: 'ALL' },
+        
+        // 3. Faculty-Wide Sessions (created by Faculty Rep)
+        { department: 'ALL' } 
       ]
-    }).populate('course', 'title code');
+    };
 
+    // Edge case: If user has NO option (General student), they should see:
+    // 1. General sessions (option: null)
+    // 2. Dept Wide sessions (option: 'ALL')
+    // They should NOT see sessions for "Math Option" etc.
+    // The query above handles this: if user.option is null, line 1 matches { option: null }.
+
+    const sessions = await Session.find(query).populate('course', 'title code');
     res.json(sessions);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
@@ -38,19 +54,33 @@ export const markAttendance = async (req, res) => {
       return res.status(400).json({ message: 'Session is closed or invalid' });
     }
 
-    // Validation
-    const isFacultyWide = session.department === 'ALL';
-    const isDeptWide = session.department === req.user.department && session.option === 'ALL';
-    const isSpecific = session.department === req.user.department && session.option === (req.user.option || null);
+    // Validation to prevent cross-marking
+    const userDept = req.user.department;
+    const userOption = req.user.option || null;
 
-    if (!isFacultyWide && !isDeptWide && !isSpecific) {
-       return res.status(403).json({ message: 'This session is not for your cohort.' });
-    }
-    
+    // Check Level
     if (session.level !== req.user.level) {
        return res.status(403).json({ message: 'Level mismatch.' });
     }
 
+    // Check Context
+    let isAllowed = false;
+
+    if (session.department === 'ALL') {
+       // Faculty wide - allowed (assuming user is in that Faculty, handled by logic implication or could add explicit check if Faculty field exists on Session)
+       isAllowed = true; 
+    } else if (session.department === userDept) {
+       // Dept Match. Check Option.
+       if (session.option === 'ALL') isAllowed = true; // Dept wide
+       else if (session.option === userOption) isAllowed = true; // Specific match
+       else if (!session.option && !userOption) isAllowed = true; // General match
+    }
+
+    if (!isAllowed) {
+       return res.status(403).json({ message: 'This session is not available for your cohort.' });
+    }
+
+    // Check if user has already marked
     const existing = await Attendance.findOne({ session: sessionId, student: req.user._id });
     if (existing) {
       return res.status(400).json({ message: 'Attendance already marked' });
