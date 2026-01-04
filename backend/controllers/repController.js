@@ -5,31 +5,23 @@ import ClassList from '../models/ClassList.js';
 import Course from '../models/Course.js';
 
 export const createSession = async (req, res) => {
-  const { courseId, durationMinutes, targetOption } = req.body;
+  const { courseId, durationMinutes, targetAudience } = req.body;
   const endTime = new Date(Date.now() + durationMinutes * 60000);
   
-  // Default: Inherit Rep's Context
   let sessionDept = req.user.department;
   let sessionOption = req.user.option || null;
 
-  // Privileged Override Logic
-  // Only Dept Reps or higher can override the option target
-  if (req.user.role === 'dept_rep' || req.user.role === 'faculty_rep') {
-    if (targetOption) {
-      if (targetOption === 'ALL') {
-        // Broad session for whole dept
-        sessionOption = 'ALL'; 
-      } else {
-        // Targeted session for a specific option (Stepping in)
-        sessionOption = targetOption;
-      }
+  // Role-Based Privileges overrides
+  if (req.user.role === 'faculty_rep') {
+    if (targetAudience === 'FACULTY') {
+      sessionDept = 'ALL';
+      sessionOption = 'ALL';
+    } 
+  } 
+  else if (req.user.role === 'dept_rep') {
+    if (targetAudience === 'DEPT') {
+      sessionOption = 'ALL';
     }
-  }
-
-  // Faculty Rep Override (If they select a different Dept - simplified for now to just Faculty Wide)
-  if (req.user.role === 'faculty_rep' && targetOption === 'FACULTY_WIDE') {
-     sessionDept = 'ALL';
-     sessionOption = 'ALL';
   }
 
   try {
@@ -63,22 +55,26 @@ export const getAvailableCourses = async (req, res) => {
     };
 
     if (role === 'super_admin') {
+       // Admins see everything
        delete query.level;
     } else if (role === 'faculty_rep') {
+       // Faculty Reps see all courses in their Faculty for that level
        query.faculty = faculty;
     } else if (role === 'dept_rep') {
+       // Dept Reps see all courses in their Department for that level
        query.department = department;
     } else {
-       // Class Reps: See courses for their Department.
-       // They should see General Dept courses (option=null) AND their specific Option courses
+       // Class Reps (Option Reps)
+       // See courses for their Department AND (General Dept courses OR Specific Option courses)
        query.department = department;
        if (option) {
          query.$or = [
            { option: null },
-           { option: { $exists: false } },
+           { option: { $exists: false } }, // Backwards compatibility
            { option: option }
          ];
        } else {
+         // If rep has no option, they likely only oversee general courses or it's a dept with no options
          query.option = null; 
        }
     }
@@ -115,6 +111,7 @@ export const endSession = async (req, res) => {
 
 export const getClassStudents = async (req, res) => {
   try {
+    // Context from Rep
     const query = {
       department: req.user.department,
       level: req.user.level,
@@ -122,8 +119,14 @@ export const getClassStudents = async (req, res) => {
     };
     if (req.user.option) query.option = req.user.option;
 
+    // 1. Get Official List (Source of Truth)
     const listEntries = await ClassList.find(query).sort({ name: 1 });
-    const registeredUsers = await User.find({ ...query, role: { $ne: 'super_admin' } }).select('regNo _id role');
+
+    // 2. Get Registered Users (Actual Accounts)
+    const registeredUsers = await User.find({ 
+      ...query, 
+      role: { $ne: 'super_admin' } 
+    }).select('regNo _id role');
 
     const registeredMap = new Map();
     registeredUsers.forEach(u => registeredMap.set(u.regNo, u));
@@ -131,7 +134,7 @@ export const getClassStudents = async (req, res) => {
     const combined = listEntries.map(entry => {
       const userAccount = registeredMap.get(entry.regNo);
       return {
-        _id: entry._id,
+        _id: entry._id, // ClassList ID
         regNo: entry.regNo,
         name: entry.name,
         hasAccount: !!userAccount,
