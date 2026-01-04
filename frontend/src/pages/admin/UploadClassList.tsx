@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Upload, AlertCircle, Layers, Users, BookOpen } from 'lucide-react';
+import { Upload, AlertCircle, Layers, Users, BookOpen, Download, FileSpreadsheet } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const MotionDiv = motion.div as any;
@@ -23,6 +23,9 @@ export default function UploadClassList() {
   const [selectedDeptData, setSelectedDeptData] = useState<any>(null);
   const [selectedOption, setSelectedOption] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
+
+  // Ref for file input
+  const eRef = useRef<HTMLInputElement>(null);
 
   const departments = faculties.find(f => f.name === selectedFaculty)?.departments || [];
   const hasOptions = selectedDeptData?.options && selectedDeptData.options.length > 0;
@@ -56,6 +59,17 @@ export default function UploadClassList() {
     const deptData = departments.find((d: any) => d.name === deptName);
     setSelectedDeptData(deptData);
     setSelectedOption(''); 
+  };
+
+  const downloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet([
+      { RegNo: "CSC/2024/001", Name: "Adewale Johnson" },
+      { RegNo: "CSC/2024/002", Name: "Sarah Connor" },
+      { RegNo: "CSC/2024/003", Name: "Ibrahim Musa" }
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ClassList_Template");
+    XLSX.writeFile(wb, "Nexus_ClassList_Template.xlsx");
   };
 
   const normalizeHeaders = (data: any[]) => {
@@ -137,7 +151,7 @@ export default function UploadClassList() {
       
       // Reset & Refresh
       setStep(1);
-      eRef.current.value = ""; // Clear file input
+      if (eRef.current) eRef.current.value = ""; // Clear file input
       fetchSummaries();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to upload class list');
@@ -145,9 +159,6 @@ export default function UploadClassList() {
       setLoading(false);
     }
   };
-
-  // Ref for file input to clear it after upload
-  const eRef = React.useRef<HTMLInputElement>(null);
 
   const canProceedToUpload = selectedFaculty && selectedDept && selectedLevel && (!hasOptions || selectedOption);
 
@@ -158,6 +169,9 @@ export default function UploadClassList() {
           <h2 className="text-3xl font-bold tracking-tight">Class List Management</h2>
           <p className="text-muted-foreground">Manage student data and cohort sources.</p>
         </div>
+        <Button variant="outline" onClick={downloadTemplate} className="gap-2 border-white/10 hover:bg-white/5">
+          <FileSpreadsheet className="h-4 w-4 text-green-500" /> Download Template
+        </Button>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
