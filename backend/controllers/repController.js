@@ -4,16 +4,44 @@ import User from '../models/User.js';
 import ClassList from '../models/ClassList.js';
 
 export const createSession = async (req, res) => {
-  const { courseId, durationMinutes } = req.body;
+  const { courseId, durationMinutes, targetAudience } = req.body;
   const endTime = new Date(Date.now() + durationMinutes * 60000);
   
+  // targetAudience can be: 'FACULTY', 'DEPT', 'OPTION' (default)
+  // Or match specifically provided dept/option IDs if functionality expands.
+  // For now, we infer based on role and request.
+
+  let sessionDept = req.user.department;
+  let sessionOption = req.user.option || null;
+
+  // Role-Based Privileges
+  if (req.user.role === 'faculty_rep') {
+    // Faculty Reps can start session for WHOLE faculty (Dept = "ALL", Option = "ALL")
+    // Or they can start for a specific dept if passed in body (not implemented yet, assuming Global for now or personal context)
+    
+    // Simplification: If they choose 'FACULTY' audience, we set Department to "ALL".
+    if (targetAudience === 'FACULTY') {
+      sessionDept = 'ALL';
+      sessionOption = 'ALL';
+    } 
+    // If they want to target their own dept, use their user.department
+  } 
+  else if (req.user.role === 'dept_rep') {
+    // Dept Reps can start session for WHOLE dept (Option = "ALL")
+    if (targetAudience === 'DEPT') {
+      sessionOption = 'ALL';
+    }
+    // Else they target their specific option (default)
+  }
+  // Class Reps always target their specific department + option (handled by default vars)
+
   try {
     const session = await Session.create({
       createdBy: req.user._id,
       course: courseId,
-      department: req.user.department,
+      department: sessionDept,
       level: req.user.level,
-      option: req.user.option || null, // Inherit option from Class Rep
+      option: sessionOption,
       endTime
     });
     
@@ -63,17 +91,14 @@ export const getClassStudents = async (req, res) => {
     const listEntries = await ClassList.find(query).sort({ name: 1 });
 
     // 2. Get Registered Users (Actual Accounts)
-    // We match registered users by regNo to list entries
     const registeredUsers = await User.find({ 
       ...query, 
       role: { $ne: 'super_admin' } 
     }).select('regNo _id role');
 
-    // Create a map of registered users for quick lookup
     const registeredMap = new Map();
     registeredUsers.forEach(u => registeredMap.set(u.regNo, u));
 
-    // Combine Data
     const combined = listEntries.map(entry => {
       const userAccount = registeredMap.get(entry.regNo);
       return {
@@ -82,7 +107,7 @@ export const getClassStudents = async (req, res) => {
         name: entry.name,
         hasAccount: !!userAccount,
         userId: userAccount ? userAccount._id : null,
-        role: userAccount ? userAccount.role : 'student' // Default to student if no account
+        role: userAccount ? userAccount.role : 'student' 
       };
     });
 
@@ -108,11 +133,9 @@ export const getRepStats = async (req, res) => {
 
 export const addStudentToClassList = async (req, res) => {
   const { regNo, name } = req.body;
-  
   if (!regNo || !name) return res.status(400).json({ message: 'Name and RegNo required' });
 
   try {
-    // Force context to match Rep's context
     const studentData = {
       regNo: String(regNo).toUpperCase().trim(),
       name: String(name).trim(),
@@ -122,9 +145,8 @@ export const addStudentToClassList = async (req, res) => {
       option: req.user.option || null
     };
 
-    // Check duplicate
     const exists = await ClassList.findOne({ regNo: studentData.regNo });
-    if (exists) return res.status(400).json({ message: 'Student with this RegNo already exists in a class list.' });
+    if (exists) return res.status(400).json({ message: 'Student with this RegNo already exists.' });
 
     const newEntry = await ClassList.create(studentData);
     res.status(201).json(newEntry);
@@ -132,14 +154,13 @@ export const addStudentToClassList = async (req, res) => {
 };
 
 export const updateClassListEntry = async (req, res) => {
-  const { id } = req.params; // ClassList ID
+  const { id } = req.params;
   const { name, regNo } = req.body;
 
   try {
     const entry = await ClassList.findById(id);
     if (!entry) return res.status(404).json({ message: 'Entry not found' });
 
-    // Ensure Rep owns this entry
     if (entry.department !== req.user.department || entry.level !== req.user.level) {
       return res.status(403).json({ message: 'Unauthorized to edit this student' });
     }
