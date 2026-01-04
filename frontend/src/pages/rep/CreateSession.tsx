@@ -3,14 +3,17 @@ import React, { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Clock, Play } from 'lucide-react';
+import { Clock, Play, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 
 export default function CreateSession() {
+  const { user } = useAuthStore();
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourse, setSelectedCourse] = useState('');
   const [duration, setDuration] = useState(60);
+  const [audience, setAudience] = useState('OPTION'); // Default to narrowest scope
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -30,7 +33,8 @@ export default function CreateSession() {
     try {
       await api.post('/rep/sessions', {
         courseId: selectedCourse,
-        durationMinutes: duration
+        durationMinutes: duration,
+        targetAudience: audience
       });
       toast.success('Session started!');
       navigate('/rep/sessions');
@@ -40,6 +44,9 @@ export default function CreateSession() {
       setLoading(false);
     }
   };
+
+  const isFacultyRep = user?.role === 'faculty_rep';
+  const isDeptRep = user?.role === 'dept_rep';
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -60,6 +67,31 @@ export default function CreateSession() {
               {courses.map(c => <option key={c._id} value={c._id}>{c.code} - {c.title}</option>)}
             </select>
           </div>
+
+          {/* Scope Selector for High-Ranking Reps */}
+          {(isFacultyRep || isDeptRep) && (
+            <div className="space-y-2 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+              <label className="text-sm font-bold flex items-center gap-2 text-indigo-400">
+                <Target className="h-4 w-4" /> Target Audience
+              </label>
+              <select 
+                className="w-full p-3 rounded-lg bg-black/40 border border-indigo-500/30 focus:ring-2 focus:ring-indigo-500 outline-none text-white"
+                value={audience}
+                onChange={(e) => setAudience(e.target.value)}
+              >
+                {/* Default Narrow Scope */}
+                <option value="OPTION">My Specific Option/Track Only</option>
+                
+                {isDeptRep && <option value="DEPT">Whole Department (All Options)</option>}
+                {isFacultyRep && <option value="FACULTY">Whole Faculty (All Departments)</option>}
+              </select>
+              <p className="text-xs text-indigo-200/60">
+                {audience === 'FACULTY' && "Visible to every student in the Faculty."}
+                {audience === 'DEPT' && "Visible to every student in the Department."}
+                {audience === 'OPTION' && "Visible only to students in your specific option."}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium ml-1">Duration (Minutes)</label>
