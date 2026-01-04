@@ -303,30 +303,3 @@ export const getAnalytics = async (req, res) => {
     });
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
-    // 1. User Counts
-    const totalStudents = await User.countDocuments({ role: 'student' });
-    const totalReps = await User.countDocuments({ role: 'class_rep' });
-    
-    // 2. Academic Structure Counts
-    const totalFaculties = await Faculty.countDocuments();
-    // Sum length of departments array in all faculties
-    const faculties = await Faculty.find({});
-    const totalDepartments = faculties.reduce((acc, f) => acc + f.departments.length, 0);
-
-    // 3. Operational Counts
-    const totalCourses = await Course.countDocuments();
-    const totalAttendance = await Attendance.countDocuments({ status: 'present' });
-    
-    const recentActivity = await Attendance.find().sort({ createdAt: -1 }).limit(5).populate('student', 'name regNo');
-    
-    res.json({ 
-      totalStudents, 
-      totalReps,
-      totalFaculties,
-      totalDepartments,
-      totalCourses, 
-      totalAttendance, 
-      recentActivity 
-    });
-  } catch (error) { res.status(400).json({ message: error.message }); }
-};
