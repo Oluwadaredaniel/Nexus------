@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence, useMotionValue } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { usePwaStore } from '../store/pwaStore';
@@ -9,7 +9,7 @@ import PwaLanding from '../components/PwaLanding';
 import { 
   ChevronRight, ShieldCheck, Zap, Radio, 
   Smartphone, BarChart3, ArrowRight, Download, Users, Layers, 
-  MapPin, CheckCircle2, Lock, Sparkles, Globe, Activity, Server, QrCode, History
+  MapPin, CheckCircle2, Lock, Sparkles, Globe, Activity, Server, QrCode, History, Menu, X
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
@@ -34,6 +34,7 @@ export default function Landing() {
   const { isInstallable, installPwa } = usePwaStore();
   const isPwa = useIsPwa();
   const { scrollY } = useScroll();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Parallax Values for Web Landing
   const yHero = useTransform(scrollY, [0, 500], [0, 200]);
@@ -69,20 +70,54 @@ export default function Landing() {
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#030712]/70 backdrop-blur-xl transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow duration-300">
               <span className="font-bold text-white text-xl">N</span>
             </div>
             <span className="font-bold tracking-tight text-xl text-white hidden sm:block">NEXUS</span>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/login')} className="hidden sm:flex text-zinc-400 hover:text-white hover:bg-white/5">
+          
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/login')} className="text-zinc-400 hover:text-white hover:bg-white/5">
               Login
             </Button>
             <Button size="sm" onClick={() => navigate('/signup')} className="bg-white text-black hover:bg-zinc-200 font-bold rounded-full px-6 h-10 shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] transition-all hover:scale-105">
               Get Started
             </Button>
           </div>
+
+          {/* Mobile Hamburger */}
+          <div className="md:hidden">
+            <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+          </div>
         </div>
+
+        {/* Mobile Nav Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="md:hidden border-b border-white/5 bg-[#030712] overflow-hidden"
+            >
+              <div className="flex flex-col gap-4 p-6">
+                <Button variant="ghost" size="lg" onClick={() => navigate('/login')} className="w-full justify-start text-zinc-400 hover:text-white hover:bg-white/5">
+                  <Lock className="mr-2 h-4 w-4" /> Login
+                </Button>
+                <Button size="lg" onClick={() => navigate('/signup')} className="w-full bg-white text-black hover:bg-zinc-200 font-bold rounded-xl">
+                  Get Started
+                </Button>
+                <div className="h-px bg-white/10 my-2" />
+                <Button variant="ghost" size="sm" onClick={handleInstallClick} className="w-full justify-start text-zinc-400">
+                  <Download className="mr-2 h-4 w-4" /> Install App
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* --- Hero Section --- */}
@@ -120,7 +155,7 @@ export default function Landing() {
             className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed"
           >
             Real-time attendance, instant notifications, and seamless academic management. 
-            Built for students, reps, and admins who demand speed and reliability.
+            Built for <span className="text-white font-semibold">OAU</span> students, reps, and admins.
           </MotionP>
 
           <MotionDiv 
