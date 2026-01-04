@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { ChevronRight, Radio, Zap, Fingerprint, LogOut } from 'lucide-react';
+import { ChevronRight, Radio, Zap, Fingerprint, LogOut, GraduationCap } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const MotionDiv = motion.div as any;
@@ -12,21 +12,21 @@ const slides = [
   {
     id: 1,
     title: "Welcome to NEXUS",
-    desc: "Your complete academic operating system.",
+    desc: "The complete academic operating system for Obafemi Awolowo University.",
     icon: <div className="h-24 w-24 rounded-3xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-[0_0_60px_-15px_rgba(99,102,241,0.6)]"><span className="text-5xl font-bold text-white">N</span></div>,
     color: "from-indigo-600 to-purple-600"
   },
   {
     id: 2,
-    title: "Live Attendance",
-    desc: "Mark your presence instantly using geolocation verification.",
-    icon: <Radio className="h-24 w-24 text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]" />,
+    title: "OAU Verified",
+    desc: "Secure attendance tracking using your Matric No. No geolocation required.",
+    icon: <GraduationCap className="h-24 w-24 text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]" />,
     color: "from-emerald-600 to-teal-600"
   },
   {
     id: 3,
     title: "Instant Updates",
-    desc: "Never miss a class or schedule change again.",
+    desc: "Never miss a class or schedule change again. Real-time notifications.",
     icon: <Zap className="h-24 w-24 text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />,
     color: "from-amber-600 to-orange-600"
   }
