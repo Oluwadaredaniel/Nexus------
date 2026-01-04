@@ -132,7 +132,8 @@ export const resetUserPassword = async (req, res) => {
 
 export const getAllReps = async (req, res) => {
   try {
-    const reps = await User.find({ role: 'class_rep' }).select('-password');
+    // Get all types of reps
+    const reps = await User.find({ role: { $in: ['class_rep', 'dept_rep', 'faculty_rep'] } }).select('-password');
     res.json(reps);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
@@ -208,44 +209,36 @@ export const getClassListSummaries = async (req, res) => {
 };
 
 export const assignClassRep = async (req, res) => {
-  const { regNo, faculty, department, level, option } = req.body;
+  const { regNo, role, faculty, department, level, option } = req.body;
   
-  if (!regNo || !faculty || !department || !level) {
-    return res.status(400).json({ message: 'Missing fields: Faculty, Dept, Level, and RegNo are required.' });
+  if (!regNo || !role) {
+    return res.status(400).json({ message: 'RegNo and Role are required.' });
   }
 
   try {
-    // 1. Strict Check: Does this RegNo exist in the specified Class List context?
-    const validInList = await ClassList.findOne({
-      regNo: String(regNo).toUpperCase().trim(),
-      faculty,
-      department,
-      level,
-      option: option || null
-    });
-
-    if (!validInList) {
-      return res.status(404).json({ 
-        message: `Student ${regNo} is not in the uploaded Class List for ${department} (${level}). Please upload the list first.` 
-      });
-    }
-
-    // 2. Check User Account
+    // 1. Check User Account
     const user = await User.findOne({ regNo: String(regNo).toUpperCase().trim() });
     if (!user) {
       return res.status(404).json({ message: 'Student account not found. The student must sign up first.' });
     }
 
-    // 3. Promote
-    user.role = 'class_rep';
-    // Ensure user context matches the rep assignment
+    // 2. Validate Context based on Role
+    // Reps must still be students with a valid academic context
     user.faculty = faculty;
     user.department = department;
     user.level = level;
-    user.option = option || null;
+    
+    // Logic for Options:
+    // Faculty Rep: Can belong to a dept/option, but their power is broad.
+    // Dept Rep: Can belong to an option, but power is dept-wide.
+    // Class Rep: Power is limited to option.
+    user.option = option || null; 
+
+    // 3. Promote
+    user.role = role; // 'faculty_rep', 'dept_rep', or 'class_rep'
     
     await user.save();
-    res.json({ message: `Success! ${user.name} is now Class Rep for ${department} ${level}` });
+    res.json({ message: `Success! ${user.name} assigned as ${role.replace('_', ' ').toUpperCase()}` });
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
@@ -287,6 +280,29 @@ export const forceEndSession = async (req, res) => {
 // --- Analytics ---
 export const getAnalytics = async (req, res) => {
   try {
+    const totalStudents = await User.countDocuments({ role: 'student' });
+    const totalReps = await User.countDocuments({ role: { $in: ['class_rep', 'dept_rep', 'faculty_rep'] } });
+    
+    const totalFaculties = await Faculty.countDocuments();
+    const faculties = await Faculty.find({});
+    const totalDepartments = faculties.reduce((acc, f) => acc + f.departments.length, 0);
+
+    const totalCourses = await Course.countDocuments();
+    const totalAttendance = await Attendance.countDocuments({ status: 'present' });
+    
+    const recentActivity = await Attendance.find().sort({ createdAt: -1 }).limit(5).populate('student', 'name regNo');
+    
+    res.json({ 
+      totalStudents, 
+      totalReps,
+      totalFaculties,
+      totalDepartments,
+      totalCourses, 
+      totalAttendance, 
+      recentActivity 
+    });
+  } catch (error) { res.status(400).json({ message: error.message }); }
+};
     // 1. User Counts
     const totalStudents = await User.countDocuments({ role: 'student' });
     const totalReps = await User.countDocuments({ role: 'class_rep' });
