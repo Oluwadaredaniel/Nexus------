@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { usePwaStore } from '../store/pwaStore';
 import { useIsPwa } from '../hooks/usePwa';
-import PwaLanding from './PwaLanding';
+import PwaLanding from '../components/PwaLanding';
 import { 
   ChevronRight, ShieldCheck, Zap, Radio, 
   Smartphone, BarChart3, Download, CheckCircle2, 
