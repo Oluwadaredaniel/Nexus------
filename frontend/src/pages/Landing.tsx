@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValue } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { usePwaStore } from '../store/pwaStore';
 import { useIsPwa } from '../hooks/usePwa';
-import PwaLanding from '../components/PwaLanding';
+import PwaLanding from './PwaLanding';
 import { 
   ChevronRight, ShieldCheck, Zap, Radio, 
   Smartphone, BarChart3, Download, CheckCircle2, 
-  Lock, Sparkles, Menu, X, Globe, Server, Users
+  Lock, Sparkles, Menu, X, Users // Added Users to fix the error
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -23,14 +23,11 @@ export default function Landing() {
   const { scrollY } = useScroll();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Parallax Values
   const yHero = useTransform(scrollY, [0, 500], [0, 200]);
   const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
   const yStats = useTransform(scrollY, [300, 800], [50, -50]);
 
-  if (isPwa) {
-    return <PwaLanding />;
-  }
+  if (isPwa) return <PwaLanding />;
 
   const handleInstallClick = async () => {
     if (isInstallable) {
@@ -42,32 +39,25 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-[#030712] text-white font-sans selection:bg-indigo-500/30 overflow-x-hidden">
-      
-      {/* --- Global Ambient Background --- */}
+      {/* Ambient Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-600/15 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[100px] mix-blend-screen" />
-        <div className="absolute top-[40%] left-[20%] w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[80px]" />
+        <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-indigo-600/15 rounded-full blur-[120px]" />
         <div className="absolute inset-0 bg-[url('/bg-grain.png')] opacity-[0.15] mix-blend-overlay" />
       </div>
 
-      {/* --- Navbar --- */}
-      <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#030712]/70 backdrop-blur-xl transition-all duration-300">
+      {/* Navbar */}
+      <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-[#030712]/70 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow duration-300">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <span className="font-bold text-white text-xl">N</span>
             </div>
             <span className="font-bold tracking-tight text-xl text-white hidden sm:block">NEXUS</span>
           </div>
           
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/login')} className="text-zinc-400 hover:text-white hover:bg-white/5">
-              Login
-            </Button>
-            <Button size="sm" onClick={() => navigate('/signup')} className="bg-white text-black hover:bg-zinc-200 font-bold rounded-full px-6 h-10 shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] transition-all hover:scale-105">
-              Get Started
-            </Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/login')} className="text-zinc-400 hover:text-white hover:bg-white/5">Login</Button>
+            <Button size="sm" onClick={() => navigate('/signup')} className="bg-white text-black hover:bg-zinc-200 font-bold rounded-full px-6 h-10 shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)]">Get Started</Button>
           </div>
 
           <div className="md:hidden">
@@ -76,132 +66,96 @@ export default function Landing() {
             </Button>
           </div>
         </div>
-
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="md:hidden border-b border-white/5 bg-[#030712] overflow-hidden"
-            >
-              <div className="flex flex-col gap-4 p-6">
-                <Button variant="ghost" size="lg" onClick={() => navigate('/login')} className="w-full justify-start text-zinc-400 hover:text-white hover:bg-white/5">
-                  <Lock className="mr-2 h-4 w-4" /> Login
-                </Button>
-                <Button size="lg" onClick={() => navigate('/signup')} className="w-full bg-white text-black hover:bg-zinc-200 font-bold rounded-xl">
-                  Get Started
-                </Button>
-                <div className="h-px bg-white/10 my-2" />
-                <Button variant="ghost" size="sm" onClick={handleInstallClick} className="w-full justify-start text-zinc-400">
-                  <Download className="mr-2 h-4 w-4" /> Install App
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </nav>
 
-      {/* --- Hero Section --- */}
-      <section className="relative z-10 pt-40 pb-20 md:pt-48 md:pb-32 px-6 flex flex-col items-center justify-center min-h-[90vh]">
+      {/* Hero Section */}
+      <section className="relative z-10 pt-40 pb-20 px-6 flex flex-col items-center justify-center min-h-[90vh]">
         <MotionDiv style={{ y: yHero, opacity: opacityHero }} className="text-center max-w-5xl mx-auto space-y-8">
-          
-          <MotionDiv 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex justify-center"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 backdrop-blur-md shadow-[0_0_30px_-10px_rgba(99,102,241,0.4)]">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-              <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Next Gen Academic Suite</span>
-            </div>
-          </MotionDiv>
-
-          <MotionH1 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.1] text-white"
-          >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 backdrop-blur-md">
+            <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Next Gen Academic Suite</span>
+          </div>
+          <MotionH1 className="text-5xl md:text-8xl font-extrabold tracking-tight leading-[1.1] text-white">
             Manage Your Campus <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 animate-gradient-x">
-              Like a Pro.
-            </span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400">Like a Pro.</span>
           </MotionH1>
-
-          <MotionP 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed"
-          >
+          <MotionP className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
             Real-time attendance, instant notifications, and seamless academic management. 
             Built for <span className="text-white font-semibold">OAU</span> students, reps, and admins.
           </MotionP>
-
-          <MotionDiv 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="flex flex-col sm:flex-row gap-5 justify-center items-center pt-6"
-          >
-            <Button 
-              size="lg" 
-              onClick={() => navigate('/signup')} 
-              className="h-14 px-8 text-lg rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_40px_-10px_rgba(99,102,241,0.6)] transition-all hover:scale-105 border-0 ring-1 ring-white/20"
-            >
+          <div className="flex flex-col sm:flex-row gap-5 justify-center items-center pt-6">
+            <Button size="lg" onClick={() => navigate('/signup')} className="h-14 px-8 text-lg rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_40px_-10px_rgba(99,102,241,0.6)]">
               Launch Dashboard <ChevronRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={handleInstallClick}
-              className="h-14 px-8 text-lg rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md transition-all hover:scale-105 text-white"
-            >
+            <Button size="lg" variant="outline" onClick={handleInstallClick} className="h-14 px-8 text-lg rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white">
               <Download className="mr-2 h-5 w-5" /> Install App
             </Button>
-          </MotionDiv>
+          </div>
         </MotionDiv>
-
-        <Hero3DMockup />
       </section>
 
-      {/* --- Stats Strip --- */}
-      <MotionDiv style={{ y: yStats }} className="relative z-20 max-w-7xl mx-auto px-6 mb-24">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-8 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-lg shadow-2xl">
-          {[
-            { label: 'Active Students', value: '15k+' },
-            { label: 'Daily Sessions', value: '2.4k' },
-            { label: 'Uptime', value: '99.9%' },
-            { label: 'Universities', value: '1' },
-          ].map((stat, i) => (
-            <div key={i} className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-1">{stat.value}</div>
-              <div className="text-xs text-zinc-500 uppercase tracking-widest font-medium">{stat.label}</div>
-            </div>
-          ))}
+      {/* Why Nexus Section with Icons */}
+      <section className="py-24 px-6 border-t border-white/5 bg-[#020617] relative z-10">
+        <div className="max-w-6xl mx-auto text-center space-y-6">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+            Built to Eliminate Manual Attendance — Completely
+          </h2>
+          <p className="text-zinc-400 max-w-3xl mx-auto text-lg leading-relaxed">
+            Nexus replaces paper-based attendance and manual record keeping with a 
+            <span className="text-white font-semibold"> real-time, verifiable system</span>.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-10">
+            {[
+              { title: "For Students", desc: "Mark attendance in seconds, view history, and never worry about records again.", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+              { title: "For Class Reps", desc: "Start sessions, set time limits, monitor attendance live, and stop impersonation.", icon: Users, color: "text-indigo-400", bg: "bg-indigo-500/10" },
+              { title: "For Admins", desc: "Access accurate analytics, detect trends, and make informed academic decisions.", icon: BarChart3, color: "text-purple-400", bg: "bg-purple-500/10" }
+            ].map((item, i) => (
+              <div key={item.title} className="group p-8 rounded-3xl bg-white/[0.02] border border-white/5 backdrop-blur-lg text-left hover:bg-white/[0.04] transition-all">
+                <div className={`h-12 w-12 rounded-2xl ${item.bg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                  <item.icon className={`h-6 w-6 ${item.color}`} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </MotionDiv>
+      </section>
 
-      {/* --- Features Grid (Bento) --- */}
-      <section id="features" className="py-24 px-6 relative z-10">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-4">
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Everything You Need</h2>
-            <p className="text-zinc-400 max-w-2xl mx-auto text-lg">A complete operating system for academic excellence.</p>
+      {/* Footer with Live Status & 2026 */}
+      <footer className="border-t border-white/5 bg-[#020617] py-14 px-6 relative">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">N</div>
+            <div className="flex flex-col">
+              <span className="text-white font-bold tracking-wide">NEXUS</span>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-tighter">System Live</span>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <BentoCard 
-              colSpan={2}
-              title="Real-Time Attendance"
-              desc="Watch sessions fill up instantly. Geo-fencing ensures students are physically present in the hall."
-              icon={Radio}
-              gradient="from-indigo-500/20 to-purple-500/5"
-            >
-              <div className="absolute right-0 bottom-0 w-2/3 h-full opacity-50">
-                 <div className="h-full w-full bg-gradient-to-t from-[#09090b] to-transparent absolute z-10 bottom-0" />
+          <div className="flex gap-8 text-sm text-zinc-500">
+            <a href="#" className="hover:text-white transition-colors">Privacy</a>
+            <a href="#" className="hover:text-white transition-colors">Terms</a>
+            <a href="#" className="hover:text-white transition-colors">Contact</a>
+          </div>
+
+          <div className="text-center md:text-right space-y-1">
+            <div className="text-sm text-zinc-400">© 2026 NEXUS.</div>
+            <div className="text-xs text-zinc-500">
+              Designed by <a href="https://www.tiktok.com/@dev_boy09" className="text-indigo-400 font-bold hover:text-indigo-300">Emerald</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}<div className="h-full w-full bg-gradient-to-t from-[#09090b] to-transparent absolute z-10 bottom-0" />
                  <div className="flex items-end justify-around h-full pb-10 px-6 gap-2">
                     {[40, 70, 50, 90, 65, 85].map((h, i) => (
                       <motion.div 
