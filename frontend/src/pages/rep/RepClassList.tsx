@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Modal } from '../../components/ui/modal';
-import { User, Users, Plus, Edit2, Search } from 'lucide-react';
+import { User, Users, Plus, Edit2, Search, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -57,6 +57,18 @@ export default function RepClassList() {
     } finally {
       setLoading(false);
       setEditingStudent(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to remove this student from the class list?")) return;
+    
+    try {
+      await api.delete(`/rep/class-list/${id}`);
+      toast.success('Student removed');
+      fetchClassList();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to remove student');
     }
   };
 
@@ -138,9 +150,14 @@ export default function RepClassList() {
                          )}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10" onClick={() => openEditModal(s)}>
-                          <Edit2 className="h-3.5 w-3.5 text-zinc-400" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10" onClick={() => openEditModal(s)}>
+                            <Edit2 className="h-3.5 w-3.5 text-zinc-400" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-500/20 hover:text-red-400" onClick={() => handleDelete(s._id)}>
+                            <Trash2 className="h-3.5 w-3.5 text-zinc-500 transition-colors" />
+                          </Button>
+                        </div>
                       </td>
                     </MotionDiv>
                   ))}
