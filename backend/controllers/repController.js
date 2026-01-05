@@ -193,8 +193,13 @@ export const updateClassListEntry = async (req, res) => {
     const entry = await ClassList.findById(id);
     if (!entry) return res.status(404).json({ message: 'Entry not found' });
 
+    // Ownership check
     if (entry.department !== req.user.department || entry.level !== req.user.level) {
       return res.status(403).json({ message: 'Unauthorized to edit this student' });
+    }
+    // If rep has specific option, ensure entry matches
+    if (req.user.option && entry.option !== req.user.option) {
+      return res.status(403).json({ message: 'Unauthorized: This student belongs to a different option.' });
     }
 
     if (name) entry.name = name;
@@ -202,5 +207,25 @@ export const updateClassListEntry = async (req, res) => {
 
     await entry.save();
     res.json(entry);
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
+export const deleteClassListEntry = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const entry = await ClassList.findById(id);
+    if (!entry) return res.status(404).json({ message: 'Entry not found' });
+
+    // Ownership check
+    if (entry.department !== req.user.department || entry.level !== req.user.level) {
+      return res.status(403).json({ message: 'Unauthorized to delete this student' });
+    }
+    // If rep has specific option, ensure entry matches
+    if (req.user.option && entry.option !== req.user.option) {
+      return res.status(403).json({ message: 'Unauthorized: This student belongs to a different option.' });
+    }
+
+    await ClassList.findByIdAndDelete(id);
+    res.json({ message: 'Student removed from list' });
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
