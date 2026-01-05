@@ -3,7 +3,7 @@ import express from 'express';
 import { 
   addFaculty, getFaculties, deleteFaculty, addDepartment, deleteDepartment,
   getCourses, addCourse, updateCourse, deleteCourse,
-  uploadClassList, getClassListSummaries, assignClassRep, 
+  uploadClassList, getClassListSummaries, deleteClassList, assignClassRep, 
   getAllStudents, deleteUser, resetUserPassword, getAllReps, demoteRep,
   getAllActiveSessions, forceEndSession, 
   getLevels, addLevel, deleteLevel,
@@ -37,9 +37,10 @@ router.delete('/courses/:id', deleteCourse);
 // People
 router.get('/students', getAllStudents);
 router.delete('/users/:id', deleteUser);
-router.put('/users/:id/reset-password', resetUserPassword); // New route
+router.put('/users/:id/reset-password', resetUserPassword);
 router.post('/upload-classlist', uploadClassList);
-router.get('/classlist-summaries', getClassListSummaries); // New route
+router.get('/classlist-summaries', getClassListSummaries);
+router.delete('/class-lists', deleteClassList); // New route for bulk delete
 router.post('/assign-classrep', assignClassRep);
 router.get('/reps', getAllReps);
 router.put('/reps/:id/demote', demoteRep);
