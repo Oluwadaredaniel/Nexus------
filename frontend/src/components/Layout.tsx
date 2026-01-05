@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { LogOut, LayoutDashboard, Users, BookOpen, GraduationCap, Building2, UserCog, User, Home, Radio, CheckCircle, ShieldAlert, BarChart, Layers, Menu, X } from 'lucide-react';
@@ -16,6 +16,11 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close mobile menu whenever location changes (extra safety)
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -64,9 +69,9 @@ export default function Layout() {
 
   const links = user.role === 'super_admin' ? adminLinks : user.role === 'class_rep' ? repLinks : studentLinks;
 
-  const NavContent = () => (
+  const NavContent = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      <div className="flex items-center gap-3 mb-8 cursor-pointer group" onClick={() => navigate('/')}>
+      <div className={`flex items-center gap-3 mb-8 cursor-pointer group ${mobile ? 'px-2' : ''}`} onClick={() => navigate('/')}>
         <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow duration-300">
           <span className="font-bold text-white text-xl">N</span>
         </div>
@@ -87,7 +92,7 @@ export default function Layout() {
             )}
             onClick={() => {
               navigate(link.path);
-              setIsMobileMenuOpen(false);
+              if (mobile) setIsMobileMenuOpen(false);
             }}
           >
             {location.pathname === link.path && (
@@ -133,7 +138,7 @@ export default function Layout() {
       </aside>
 
       {/* Mobile Top Bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-16 border-b border-white/10 bg-black/80 backdrop-blur-xl flex items-center justify-between px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-16 border-b border-white/10 bg-black/80 backdrop-blur-xl flex items-center justify-between px-4 transition-all">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg">
             <span className="font-bold text-white text-sm">N</span>
@@ -149,28 +154,28 @@ export default function Layout() {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            {/* Backdrop */}
+            {/* Backdrop - High Z-Index */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm md:hidden"
             />
-            {/* Drawer */}
+            {/* Drawer - Higher Z-Index */}
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-y-0 left-0 z-50 w-72 bg-[#09090b] border-r border-white/10 p-6 flex flex-col md:hidden"
+              className="fixed inset-y-0 left-0 z-[101] w-72 bg-[#09090b] border-r border-white/10 p-6 flex flex-col md:hidden shadow-2xl"
             >
               <div className="flex justify-end mb-2">
-                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
-                  <X className="h-5 w-5 text-zinc-400" />
+                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="hover:bg-white/10 rounded-full">
+                  <X className="h-5 w-5 text-zinc-400 hover:text-white transition-colors" />
                 </Button>
               </div>
-              <NavContent />
+              <NavContent mobile={true} />
             </motion.div>
           </>
         )}
@@ -193,4 +198,4 @@ export default function Layout() {
       </main>
     </div>
   );
-}
+            }
