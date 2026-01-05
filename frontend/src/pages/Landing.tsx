@@ -8,7 +8,7 @@ import PwaLanding from '../components/PwaLanding';
 import { 
   ChevronRight, ShieldCheck, Zap, Radio, 
   Smartphone, BarChart3, Download, CheckCircle2, 
-  Lock, Sparkles, Menu, X, Globe, Server
+  Lock, Sparkles, Menu, X, Globe, Server, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
