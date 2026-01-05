@@ -208,6 +208,33 @@ export const getClassListSummaries = async (req, res) => {
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
+// NEW: Delete entire class list cohort
+export const deleteClassList = async (req, res) => {
+  try {
+    const { faculty, department, level, option } = req.query;
+    
+    if (!faculty || !department || !level) {
+      return res.status(400).json({ message: 'Missing parameters. Faculty, Department and Level are required.' });
+    }
+
+    // Build filter. Handle option being 'null' string carefully if passed from query
+    const filter = { 
+      faculty, 
+      department, 
+      level 
+    };
+
+    if (option && option !== 'null' && option !== '') {
+      filter.option = option;
+    } else {
+      filter.option = null;
+    }
+
+    const result = await ClassList.deleteMany(filter);
+    res.json({ message: `Deleted ${result.deletedCount} student entries from class list.` });
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
 export const assignClassRep = async (req, res) => {
   const { regNo, role, faculty, department, level, option } = req.body;
   
@@ -227,15 +254,10 @@ export const assignClassRep = async (req, res) => {
     user.faculty = faculty;
     user.department = department;
     user.level = level;
-    
-    // Logic for Options:
-    // Faculty Rep: Can belong to a dept/option, but their power is broad.
-    // Dept Rep: Can belong to an option, but power is dept-wide.
-    // Class Rep: Power is limited to option.
     user.option = option || null; 
 
     // 3. Promote
-    user.role = role; // 'faculty_rep', 'dept_rep', or 'class_rep'
+    user.role = role; 
     
     await user.save();
     res.json({ message: `Success! ${user.name} assigned as ${role.replace('_', ' ').toUpperCase()}` });
@@ -282,6 +304,27 @@ export const getAnalytics = async (req, res) => {
   try {
     const totalStudents = await User.countDocuments({ role: 'student' });
     const totalReps = await User.countDocuments({ role: { $in: ['class_rep', 'dept_rep', 'faculty_rep'] } });
+    
+    const totalFaculties = await Faculty.countDocuments();
+    const faculties = await Faculty.find({});
+    const totalDepartments = faculties.reduce((acc, f) => acc + f.departments.length, 0);
+
+    const totalCourses = await Course.countDocuments();
+    const totalAttendance = await Attendance.countDocuments({ status: 'present' });
+    
+    const recentActivity = await Attendance.find().sort({ createdAt: -1 }).limit(5).populate('student', 'name regNo');
+    
+    res.json({ 
+      totalStudents, 
+      totalReps,
+      totalFaculties,
+      totalDepartments,
+      totalCourses, 
+      totalAttendance, 
+      recentActivity 
+    });
+  } catch (error) { res.status(400).json({ message: error.message }); }
+};_rep', 'dept_rep', 'faculty_rep'] } });
     
     const totalFaculties = await Faculty.countDocuments();
     const faculties = await Faculty.find({});
