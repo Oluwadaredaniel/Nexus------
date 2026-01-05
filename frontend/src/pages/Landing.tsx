@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValue } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -7,10 +7,9 @@ import { useIsPwa } from '../hooks/usePwa';
 import PwaLanding from '../components/PwaLanding';
 import { 
   ChevronRight, ShieldCheck, Zap, Radio, 
-  Smartphone, BarChart3, ArrowRight, Download, Users, Layers, 
-  MapPin, CheckCircle2, Lock, Sparkles, Globe, Activity, Server, QrCode, History, Menu, X
+  Smartphone, BarChart3, Download, CheckCircle2, 
+  Lock, Sparkles, Menu, X, Globe, Server
 } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 
 const MotionDiv = motion.div as any;
@@ -24,6 +23,7 @@ export default function Landing() {
   const { scrollY } = useScroll();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
+  // Parallax Values
   const yHero = useTransform(scrollY, [0, 500], [0, 200]);
   const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
   const yStats = useTransform(scrollY, [300, 800], [50, -50]);
@@ -340,22 +340,34 @@ export default function Landing() {
             {[
               {
                 title: "For Students",
-                desc: "Mark attendance in seconds, view history, and never worry about missing records again."
+                desc: "Mark attendance in seconds, view history, and never worry about missing records again.",
+                icon: CheckCircle2,
+                color: "text-emerald-400",
+                bg: "bg-emerald-500/10"
               },
               {
                 title: "For Class Reps",
-                desc: "Start sessions, set time limits, monitor attendance live, and eliminate impersonation."
+                desc: "Start sessions, set time limits, monitor attendance live, and eliminate impersonation.",
+                icon: Users,
+                color: "text-indigo-400",
+                bg: "bg-indigo-500/10"
               },
               {
                 title: "For Admins",
-                desc: "Access accurate analytics, detect trends, validate data, and make informed academic decisions."
+                desc: "Access accurate analytics, detect trends, validate data, and make informed academic decisions.",
+                icon: BarChart3,
+                color: "text-purple-400",
+                bg: "bg-purple-500/10"
               }
             ].map((item, i) => (
               <div
                 key={item.title}
-                className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-lg text-left hover:bg-white/[0.05] transition-colors"
+                className="group p-8 rounded-3xl bg-white/[0.02] border border-white/5 backdrop-blur-lg text-left hover:bg-white/[0.04] hover:border-white/10 transition-all duration-300"
               >
-                <h3 className="font-semibold text-white mb-2">{item.title}</h3>
+                <div className={`h-12 w-12 rounded-2xl ${item.bg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                  <item.icon className={`h-6 w-6 ${item.color}`} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -368,7 +380,7 @@ export default function Landing() {
       </section>
 
       {/* --- Footer --- */}
-      <footer className="border-t border-white/5 bg-[#020617] py-14 px-6">
+      <footer className="border-t border-white/5 bg-[#020617] py-14 px-6 relative">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-zinc-500">
           
           <div className="flex items-center gap-3">
@@ -376,28 +388,34 @@ export default function Landing() {
               N
             </div>
             <div className="flex flex-col">
-              <span className="text-white font-semibold leading-tight">NEXUS</span>
-              <span className="text-xs text-zinc-500">
-                Academic Management Platform
-              </span>
+              <span className="text-white font-semibold leading-tight tracking-wide">NEXUS</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <div className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </div>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-tighter">
+                   System Operational
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-6">
+          <div className="flex gap-8">
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
             <a href="#" className="hover:text-white transition-colors">Contact</a>
           </div>
 
           <div className="text-center md:text-right space-y-1">
-            <div>© 2024 NEXUS.</div>
+            <div className="font-medium">© 2026 NEXUS.</div>
             <div className="text-xs">
               Designed by{" "}
               <a
                 href="https://www.tiktok.com/@dev_boy09"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
+                className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors"
               >
                 Emerald
               </a>
@@ -437,7 +455,6 @@ function Hero3DMockup() {
         transition={{ duration: 1, delay: 0.2 }}
         className="w-full aspect-[16/9] bg-[#09090b] rounded-2xl border border-white/10 shadow-[0_0_50px_-10px_rgba(0,0,0,0.5)] overflow-hidden relative group"
       >
-        {/* Mockup Header */}
         <div className="h-10 border-b border-white/5 bg-white/5 flex items-center px-4 gap-2">
            <div className="flex gap-1.5">
              <div className="h-3 w-3 rounded-full bg-red-500/50" />
@@ -447,7 +464,6 @@ function Hero3DMockup() {
            <div className="ml-4 h-4 w-64 bg-white/5 rounded-full" />
         </div>
         
-        {/* Mockup Body */}
         <div className="p-6 grid grid-cols-4 gap-6 h-full">
            <div className="col-span-1 bg-white/5 rounded-xl border border-white/5 h-4/5 hidden md:block" />
            <div className="col-span-4 md:col-span-3 space-y-6">
@@ -472,7 +488,6 @@ function Hero3DMockup() {
               </div>
            </div>
         </div>
-
         <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none" />
       </motion.div>
     </div>
