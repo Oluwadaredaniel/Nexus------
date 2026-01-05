@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValue } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -18,17 +17,6 @@ const MotionDiv = motion.div as any;
 const MotionH1 = motion.h1 as any;
 const MotionP = motion.p as any;
 
-// Mock Data for Analytics Preview
-const chartData = [
-  { name: 'W1', value: 400 },
-  { name: 'W2', value: 600 },
-  { name: 'W3', value: 550 },
-  { name: 'W4', value: 800 },
-  { name: 'W5', value: 750 },
-  { name: 'W6', value: 950 },
-  { name: 'W7', value: 1100 },
-];
-
 export default function Landing() {
   const navigate = useNavigate();
   const { isInstallable, installPwa } = usePwaStore();
@@ -36,17 +24,14 @@ export default function Landing() {
   const { scrollY } = useScroll();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Parallax Values for Web Landing
   const yHero = useTransform(scrollY, [0, 500], [0, 200]);
   const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
   const yStats = useTransform(scrollY, [300, 800], [50, -50]);
 
-  // If PWA Standalone Mode, render the App-Like Landing
   if (isPwa) {
     return <PwaLanding />;
   }
 
-  // Otherwise, render the Website Marketing Landing
   const handleInstallClick = async () => {
     if (isInstallable) {
       await installPwa();
@@ -76,7 +61,6 @@ export default function Landing() {
             <span className="font-bold tracking-tight text-xl text-white hidden sm:block">NEXUS</span>
           </div>
           
-          {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-4">
             <Button variant="ghost" size="sm" onClick={() => navigate('/login')} className="text-zinc-400 hover:text-white hover:bg-white/5">
               Login
@@ -86,7 +70,6 @@ export default function Landing() {
             </Button>
           </div>
 
-          {/* Mobile Hamburger */}
           <div className="md:hidden">
             <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -94,7 +77,6 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Mobile Nav Menu */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div 
@@ -182,11 +164,10 @@ export default function Landing() {
           </MotionDiv>
         </MotionDiv>
 
-        {/* 3D Dashboard Mockup */}
         <Hero3DMockup />
       </section>
 
-      {/* --- Stats Strip (Parallax) --- */}
+      {/* --- Stats Strip --- */}
       <MotionDiv style={{ y: yStats }} className="relative z-20 max-w-7xl mx-auto px-6 mb-24">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-8 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-lg shadow-2xl">
           {[
@@ -221,7 +202,6 @@ export default function Landing() {
             >
               <div className="absolute right-0 bottom-0 w-2/3 h-full opacity-50">
                  <div className="h-full w-full bg-gradient-to-t from-[#09090b] to-transparent absolute z-10 bottom-0" />
-                 {/* Abstract visual of attendance graph */}
                  <div className="flex items-end justify-around h-full pb-10 px-6 gap-2">
                     {[40, 70, 50, 90, 65, 85].map((h, i) => (
                       <motion.div 
@@ -291,7 +271,7 @@ export default function Landing() {
                 "Instant Updates",
                 "Battery Optimized"
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-4">
+                <div key={item} className="flex items-center gap-4">
                   <div className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center text-green-400">
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
@@ -304,7 +284,7 @@ export default function Landing() {
             </Button>
           </div>
 
-          {/* Phone Frame */}
+          {/* Phone Frame Mockup */}
           <div className="flex-1 relative flex justify-center">
             <div className="absolute inset-0 bg-indigo-500/20 blur-[100px] rounded-full" />
             <motion.div 
@@ -314,7 +294,6 @@ export default function Landing() {
               transition={{ duration: 0.8 }}
               className="relative w-[300px] h-[600px] bg-black border-[8px] border-zinc-800 rounded-[3rem] shadow-2xl overflow-hidden z-10"
             >
-              {/* Fake UI Inside Phone */}
               <div className="w-full h-full bg-[#09090b] p-5 pt-12 flex flex-col">
                  <div className="flex justify-between items-center mb-6">
                     <div>
@@ -343,19 +322,87 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* --- Footer --- */}
-      <footer className="border-t border-white/5 bg-[#020617] py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-zinc-500">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-md bg-white/10 flex items-center justify-center text-white font-bold text-xs">N</div>
-            <span className="text-white font-semibold">NEXUS</span>
+      {/* --- Platform Impact / Why Nexus --- */}
+      <section className="py-24 px-6 border-t border-white/5 bg-[#020617] relative z-10">
+        <div className="max-w-6xl mx-auto text-center space-y-6">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+            Built to Eliminate Manual Attendance — Completely
+          </h2>
+
+          <p className="text-zinc-400 max-w-3xl mx-auto text-lg leading-relaxed">
+            Nexus replaces paper-based attendance, guesswork, and manual record keeping with a 
+            <span className="text-white font-semibold"> real-time, verifiable, and auditable system</span>. 
+            Students mark attendance effortlessly, class reps manage sessions with control, 
+            and administrators gain accurate insights.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-10">
+            {[
+              {
+                title: "For Students",
+                desc: "Mark attendance in seconds, view history, and never worry about missing records again."
+              },
+              {
+                title: "For Class Reps",
+                desc: "Start sessions, set time limits, monitor attendance live, and eliminate impersonation."
+              },
+              {
+                title: "For Admins",
+                desc: "Access accurate analytics, detect trends, validate data, and make informed academic decisions."
+              }
+            ].map((item, i) => (
+              <div
+                key={item.title}
+                className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-lg text-left hover:bg-white/[0.05] transition-colors"
+              >
+                <h3 className="font-semibold text-white mb-2">{item.title}</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
           </div>
+
+          <p className="text-xs text-zinc-500 pt-8 uppercase tracking-widest opacity-50">
+            Digital Transformation • Institutional Accountability • Quality Education
+          </p>
+        </div>
+      </section>
+
+      {/* --- Footer --- */}
+      <footer className="border-t border-white/5 bg-[#020617] py-14 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-zinc-500">
+          
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
+              N
+            </div>
+            <div className="flex flex-col">
+              <span className="text-white font-semibold leading-tight">NEXUS</span>
+              <span className="text-xs text-zinc-500">
+                Academic Management Platform
+              </span>
+            </div>
+          </div>
+
           <div className="flex gap-6">
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
             <a href="#" className="hover:text-white transition-colors">Contact</a>
           </div>
-          <div>© 2024 NEXUS Academic Suite.</div>
+
+          <div className="text-center md:text-right space-y-1">
+            <div>© 2024 NEXUS.</div>
+            <div className="text-xs">
+              Designed by{" "}
+              <a
+                href="https://www.tiktok.com/@dev_boy09"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
+              >
+                Emerald
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
@@ -367,7 +414,7 @@ export default function Landing() {
 function Hero3DMockup() {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rotateX = useTransform(y, [-100, 100], [10, -10]); // Inverted for tilt effect
+  const rotateX = useTransform(y, [-100, 100], [10, -10]);
   const rotateY = useTransform(x, [-100, 100], [-10, 10]);
 
   return (
@@ -411,7 +458,6 @@ function Hero3DMockup() {
               </div>
               <div className="h-64 rounded-xl bg-white/5 border border-white/5 relative overflow-hidden">
                  <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] to-transparent opacity-50" />
-                 {/* Fake Chart */}
                  <div className="absolute bottom-0 left-0 right-0 h-32 flex items-end justify-around px-4 pb-4 gap-2">
                     {[30, 50, 40, 70, 50, 80, 60, 90, 75].map((h, i) => (
                        <motion.div 
@@ -427,7 +473,6 @@ function Hero3DMockup() {
            </div>
         </div>
 
-        {/* Reflection Overlay */}
         <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none" />
       </motion.div>
     </div>
