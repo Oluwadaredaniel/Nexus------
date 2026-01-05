@@ -1,77 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Button } from './ui/button';
 import {
   ChevronRight,
   Zap,
+  ShieldCheck,
+  Radio,
+  Smartphone,
+  BarChart3,
   Fingerprint,
   LogOut,
   GraduationCap,
-  Home,
-  Users,
-  ShieldCheck,
-  BarChart3
+  Home
 } from 'lucide-react';
+import { Button } from './ui/button';
 import { useAuthStore } from '../store/authStore';
 
 const MotionDiv = motion.div as any;
 
-/* ---------------- SLIDES ---------------- */
+/* -------------------------------- SLIDES -------------------------------- */
+
 const slides = [
   {
-    id: 1,
     title: 'Welcome to NEXUS',
-    desc: 'A mobile-first academic operating system built for speed, accuracy, and trust.',
-    icon: (
-      <div className="h-24 w-24 rounded-3xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-[0_0_60px_-15px_rgba(99,102,241,0.6)]">
-        <span className="text-5xl font-bold text-white">N</span>
-      </div>
-    )
+    desc: 'The operating system powering modern academic life at Obafemi Awolowo University.',
+    icon: <span className="text-6xl font-black text-white">N</span>,
+    accent: 'from-indigo-600 to-purple-600'
   },
   {
-    id: 2,
     title: 'Verified Attendance',
-    desc: 'Attendance tied to real student identities. No paper. No impersonation.',
-    icon: (
-      <GraduationCap className="h-24 w-24 text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]" />
-    )
+    desc: 'Attendance you can trust. Secure, tamper-proof, and linked to your academic identity.',
+    icon: <Radio className="h-24 w-24 text-indigo-400" />,
+    accent: 'from-indigo-600 to-cyan-600'
   },
   {
-    id: 3,
-    title: 'Built for Reps',
-    desc: 'Create sessions, track turnout, and manage classes in seconds.',
-    icon: (
-      <Users className="h-24 w-24 text-indigo-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
-    )
+    title: 'No Geolocation Stress',
+    desc: 'No GPS tracking. No battery drain. Just smart verification using your matric number.',
+    icon: <ShieldCheck className="h-24 w-24 text-emerald-400" />,
+    accent: 'from-emerald-600 to-teal-600'
   },
   {
-    id: 4,
-    title: 'Live & Instant',
-    desc: 'Real-time updates, notifications, and attendance sync.',
-    icon: (
-      <Zap className="h-24 w-24 text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
-    )
+    title: 'Instant Notifications',
+    desc: 'Lecture updates, attendance alerts, and announcements — delivered in real time.',
+    icon: <Zap className="h-24 w-24 text-amber-400" />,
+    accent: 'from-amber-600 to-orange-600'
   },
   {
-    id: 5,
+    title: 'Built as a PWA',
+    desc: 'Install once. Works offline. Feels native. No Play Store required.',
+    icon: <Smartphone className="h-24 w-24 text-purple-400" />,
+    accent: 'from-purple-600 to-indigo-600'
+  },
+  {
     title: 'Actionable Insights',
-    desc: 'Admins get clean data, trends, and analytics that actually matter.',
-    icon: (
-      <BarChart3 className="h-24 w-24 text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" />
-    )
+    desc: 'Admins and reps get real analytics — not guesses.',
+    icon: <BarChart3 className="h-24 w-24 text-cyan-400" />,
+    accent: 'from-cyan-600 to-blue-600'
   }
 ];
+
+/* ------------------------------ COMPONENT ------------------------------ */
 
 export default function PwaLanding() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [forceIntro, setForceIntro] = useState(false);
+
+  const hasCompletedOnboarding =
+    localStorage.getItem('pwa_onboarded') === 'true';
+
+  const showOnboarding = forceIntro || !hasCompletedOnboarding;
+
+  /* ------------------------- Slide Controls ------------------------- */
 
   const nextSlide = () => {
     if (currentSlide < slides.length - 1) {
-      setCurrentSlide(c => c + 1);
+      setCurrentSlide(s => s + 1);
     } else {
+      localStorage.setItem('pwa_onboarded', 'true');
+      setForceIntro(false);
       navigate('/login');
     }
   };
@@ -82,149 +91,145 @@ export default function PwaLanding() {
     else navigate('/student');
   };
 
-  /* ---------------- LOGGED IN VIEW ---------------- */
-  if (user) {
+  /* ----------------------- ENTER CAMPUS SCREEN ----------------------- */
+
+  if (user && !showOnboarding) {
     return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center overflow-hidden relative">
-
-        {/* Back to Website */}
-        <button
-          onClick={() => navigate('/')}
-          className="absolute top-5 left-5 z-20 flex items-center gap-2 text-xs text-zinc-400 hover:text-white transition"
-        >
-          <Home className="h-4 w-4" /> Website
-        </button>
-
-        {/* Ambient BG */}
+      <div className="fixed inset-0 bg-black flex items-center justify-center relative overflow-hidden">
+        {/* Ambient */}
         <div className="absolute inset-0">
-          <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-indigo-600/20 blur-[100px]" />
-          <div className="absolute bottom-[-20%] right-[-20%] w-[500px] h-[500px] bg-cyan-600/10 blur-[100px]" />
+          <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-30%] right-[-30%] w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[140px]" />
+          <div className="absolute inset-0 bg-[url('/bg-grain.png')] opacity-20 mix-blend-overlay" />
         </div>
 
-        <div className="relative z-10 w-full max-w-sm px-8 flex flex-col items-center gap-8">
-
-          {/* Avatar */}
-          <div className="relative">
-            <MotionDiv
-              animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="absolute inset-0 bg-indigo-500 rounded-full blur-xl"
-            />
-            <div className="h-24 w-24 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 p-1 relative z-10">
-              <div className="h-full w-full rounded-full bg-black flex items-center justify-center text-4xl font-bold">
-                {user.name.charAt(0)}
-              </div>
-            </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative z-10 w-full max-w-sm px-8 text-center space-y-8"
+        >
+          <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-2xl">
+            {user.name.charAt(0)}
           </div>
 
-          <div className="text-center space-y-2">
-            <p className="text-zinc-400 text-xs uppercase tracking-widest">Welcome back</p>
-            <h1 className="text-3xl font-bold">{user.name.split(' ')[0]}</h1>
-            <span className="text-xs text-zinc-500 bg-white/5 px-3 py-1 rounded-full border border-white/5">
-              {user.regNo}
-            </span>
+          <div>
+            <p className="text-zinc-400 text-sm uppercase tracking-widest">
+              Welcome back
+            </p>
+            <h1 className="text-3xl font-bold text-white mt-1">
+              {user.name.split(' ')[0]}
+            </h1>
+            <p className="text-xs text-zinc-500 mt-2">{user.regNo}</p>
           </div>
 
-          <div className="w-full space-y-3 pt-6">
+          <div className="space-y-3">
             <Button
               onClick={handleResume}
-              className="w-full h-14 bg-white text-black rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+              className="w-full h-14 rounded-2xl bg-white text-black font-bold text-lg hover:bg-zinc-200"
             >
-              <Fingerprint className="h-5 w-5" /> Enter Campus
+              <Fingerprint className="mr-2 h-5 w-5" />
+              Enter Campus
             </Button>
+
+            {/* 🔥 THIS IS THE BUTTON YOU MEANT */}
+            <button
+              onClick={() => {
+                setForceIntro(true);
+                setCurrentSlide(0);
+              }}
+              className="flex items-center justify-center gap-2 text-xs text-zinc-500 hover:text-white transition"
+            >
+              <Home className="h-3 w-3" />
+              View App Intro
+            </button>
 
             <button
               onClick={() => navigate('/login')}
-              className="w-full text-center text-zinc-500 text-sm flex items-center justify-center gap-2"
+              className="flex items-center justify-center gap-2 text-xs text-zinc-600 hover:text-zinc-400 transition"
             >
-              <LogOut className="h-3 w-3" /> Switch Account
+              <LogOut className="h-3 w-3" />
+              Switch Account
             </button>
           </div>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
-  /* ---------------- GUEST / ONBOARDING ---------------- */
+  /* --------------------------- ONBOARDING --------------------------- */
+
   return (
     <div className="fixed inset-0 bg-black flex flex-col justify-between overflow-hidden">
-
-      {/* Back to Website */}
-      <button
-        onClick={() => navigate('/')}
-        className="absolute top-5 left-5 z-20 flex items-center gap-2 text-xs text-zinc-400 hover:text-white transition"
-      >
-        <Home className="h-4 w-4" /> Website
-      </button>
-
-      {/* Ambient BG */}
+      {/* Animated Background */}
       <div className="absolute inset-0">
-        <MotionDiv
+        <motion.div
           animate={{
             background: [
-              'radial-gradient(circle at 50% 50%, #4f46e520 0%, transparent 50%)',
-              'radial-gradient(circle at 50% 50%, #10b98120 0%, transparent 50%)',
-              'radial-gradient(circle at 50% 50%, #06b6d420 0%, transparent 50%)'
+              'radial-gradient(circle at 50% 50%, #4f46e530 0%, transparent 55%)',
+              'radial-gradient(circle at 50% 50%, #06b6d430 0%, transparent 55%)'
             ]
           }}
-          transition={{ duration: 12, repeat: Infinity, repeatType: 'reverse' }}
+          transition={{ duration: 10, repeat: Infinity, repeatType: 'mirror' }}
           className="absolute inset-0"
         />
+        <div className="absolute inset-0 bg-[url('/bg-grain.png')] opacity-20 mix-blend-overlay" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 flex-1 flex items-center justify-center p-8">
+      {/* Slide Content */}
+      <div className="relative z-10 flex-1 flex items-center justify-center px-8">
         <AnimatePresence mode="wait">
-          <MotionDiv
+          <motion.div
             key={currentSlide}
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="flex flex-col items-center text-center space-y-8 max-w-sm"
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -40, scale: 1.05 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+            className="text-center max-w-sm space-y-8"
           >
-            <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity }}>
+            <motion.div
+              animate={{ y: [0, -12, 0] }}
+              transition={{ duration: 5, repeat: Infinity }}
+              className={`mx-auto h-28 w-28 rounded-3xl bg-gradient-to-tr ${slides[currentSlide].accent} flex items-center justify-center shadow-2xl`}
+            >
               {slides[currentSlide].icon}
             </motion.div>
 
-            <div className="space-y-3">
-              <h1 className="text-3xl font-bold">{slides[currentSlide].title}</h1>
-              <p className="text-zinc-400 text-lg">{slides[currentSlide].desc}</p>
+            <div>
+              <h1 className="text-3xl font-bold text-white">
+                {slides[currentSlide].title}
+              </h1>
+              <p className="text-zinc-400 text-lg mt-3 leading-relaxed">
+                {slides[currentSlide].desc}
+              </p>
             </div>
-          </MotionDiv>
+          </motion.div>
         </AnimatePresence>
       </div>
 
       {/* Controls */}
       <div className="relative z-10 p-8 space-y-6">
+        {/* Dots */}
         <div className="flex justify-center gap-2">
           {slides.map((_, i) => (
             <motion.div
               key={i}
               layout
-              className={`h-1.5 rounded-full ${i === currentSlide ? 'bg-white w-6' : 'bg-white/20 w-1.5'}`}
+              className={`h-1.5 rounded-full ${
+                i === currentSlide ? 'w-6 bg-white' : 'w-1.5 bg-white/20'
+              }`}
             />
           ))}
         </div>
 
-        {currentSlide === slides.length - 1 ? (
-          <>
-            <Button className="w-full h-14 rounded-2xl bg-white text-black text-lg font-bold" onClick={() => navigate('/login')}>
-              Get Started
-            </Button>
-            <Button variant="ghost" className="w-full text-zinc-500" onClick={() => navigate('/signup')}>
-              Create Account
-            </Button>
-          </>
-        ) : (
-          <Button
-            className="w-full h-14 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/5"
-            onClick={nextSlide}
-          >
-            Continue <ChevronRight className="ml-2 h-5 w-5" />
-          </Button>
-        )}
+        <Button
+          size="lg"
+          onClick={nextSlide}
+          className="w-full h-14 rounded-2xl bg-white text-black font-semibold hover:bg-zinc-200"
+        >
+          {currentSlide === slides.length - 1 ? 'Get Started' : 'Continue'}
+          <ChevronRight className="ml-2 h-5 w-5" />
+        </Button>
       </div>
     </div>
   );
-}
+                }
