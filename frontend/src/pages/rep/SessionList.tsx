@@ -4,13 +4,16 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import SessionCard from '../../components/shared/SessionCard';
 import { Button } from '../../components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import saveAs from 'file-saver';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { formatDate } from '../../lib/utils';
+import { motion } from 'framer-motion';
+
+const MotionDiv = motion.div as any;
 
 export default function SessionList() {
   const [sessions, setSessions] = useState<any[]>([]);
@@ -39,7 +42,6 @@ export default function SessionList() {
     try {
       const res = await api.get(`/attendance/session/${sessionId}/attendees`);
       
-      // Determine if session was broad (Faculty/Dept wide) to include extra columns
       const session = sessions.find(s => s._id === sessionId);
       const isBroad = session?.department === 'ALL' || session?.option === 'ALL';
 
@@ -48,13 +50,10 @@ export default function SessionList() {
           RegNo: r.regNo,
           Name: r.student.name,
         };
-        
-        // Add context columns if broad session
         if (isBroad) {
           row.Department = r.student.department || '-';
           row.Option = r.student.option || '-';
         }
-
         row.Time = formatDate(r.markedAt);
         row.Status = r.status.toUpperCase();
         return row;
@@ -62,7 +61,7 @@ export default function SessionList() {
 
       if (data.length === 0) {
         toast.dismiss(toastId);
-        toast.error('No attendance records found for this session.');
+        toast.error('No attendance records found.');
         return;
       }
 
@@ -76,7 +75,6 @@ export default function SessionList() {
       } else {
         const doc = new jsPDF();
         const title = session ? `${session.course.code} - ${session.course.title}` : 'Attendance Report';
-        
         doc.text(title, 14, 15);
         doc.setFontSize(10);
         doc.text(`Date: ${formatDate(new Date())} | Scope: ${isBroad ? 'Multi-Department' : 'Class'}`, 14, 22);
@@ -85,12 +83,10 @@ export default function SessionList() {
           ? [['Reg No', 'Name', 'Dept', 'Option', 'Time', 'Status']]
           : [['Reg No', 'Name', 'Time', 'Status']];
 
-        const body = data.map((row: any) => Object.values(row));
-
         (doc as any).autoTable({
           startY: 25,
           head: headers,
-          body: body,
+          body: data.map((row: any) => Object.values(row)),
           theme: 'grid',
           styles: { fontSize: 8 },
           headStyles: { fillColor: [79, 70, 229] }
@@ -116,15 +112,34 @@ export default function SessionList() {
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {sessions.map(s => (
-          <SessionCard 
-            key={s._id} 
-            session={s} 
-            role="rep" 
-            onAction={s.isActive ? handleEndSession : undefined}
-            onExport={handleExport}
-          />
-        ))}
+        {sessions.map(s => {
+           const isActive = s.isActive && new Date() < new Date(s.endTime);
+           return (
+             <div key={s._id} className="relative group">
+                <SessionCard 
+                  session={s} 
+                  role="rep" 
+                  onAction={isActive ? handleEndSession : undefined}
+                  onExport={handleExport}
+                />
+                {isActive && (
+                  <MotionDiv 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute top-4 right-4 z-20"
+                  >
+                    <Button 
+                      size="sm" 
+                      onClick={(e) => { e.stopPropagation(); navigate(`/rep/session/${s._id}/monitor`); }}
+                      className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 rounded-full h-8 px-3 text-xs"
+                    >
+                      <Activity className="h-3 w-3 mr-1.5 text-emerald-400 animate-pulse" /> Live Monitor
+                    </Button>
+                  </MotionDiv>
+                )}
+             </div>
+           );
+        })}
         {sessions.length === 0 && <p className="text-muted-foreground col-span-full text-center py-10">No sessions found.</p>}
       </div>
     </div>
