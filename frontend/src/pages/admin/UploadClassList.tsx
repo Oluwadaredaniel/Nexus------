@@ -5,7 +5,7 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Upload, AlertCircle, Layers, Users, BookOpen, Download, FileSpreadsheet, Trash2, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { Upload, AlertCircle, Layers, Users, BookOpen, Download, FileSpreadsheet, Trash2, X, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MotionDiv = motion.div as any;
@@ -28,6 +28,7 @@ export default function UploadClassList() {
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [detectedHeaders, setDetectedHeaders] = useState<string[]>([]);
 
   // Ref for file input
   const eRef = useRef<HTMLInputElement>(null);
@@ -78,18 +79,36 @@ export default function UploadClassList() {
   };
 
   const normalizeHeaders = (data: any[]) => {
+    if (!data || data.length === 0) return [];
+    
+    // Store raw headers for debugging feedback
+    const firstRow = data[0];
+    setDetectedHeaders(Object.keys(firstRow));
+
     return data.map(row => {
       const newRow: any = {};
       Object.keys(row).forEach(key => {
         // Normalize key: remove spaces, lowercase, remove special chars
         const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const val = String(row[key]).trim();
         
-        // Map common variations to standard keys
-        if (['regno', 'matricno', 'matriculationnumber', 'registrationnumber', 'id', 'studentno'].includes(cleanKey)) {
-          newRow.regNo = String(row[key]).trim();
-        } else if (['name', 'fullname', 'studentname', 'names'].includes(cleanKey)) {
-          newRow.name = String(row[key]).trim();
+        // Smart Matching Logic: Check for substrings
+        if (
+          cleanKey.includes('regno') || 
+          cleanKey.includes('matric') || 
+          cleanKey.includes('admission') ||
+          cleanKey === 'id' ||
+          cleanKey === 'no'
+        ) {
+          newRow.regNo = val;
+        } else if (
+          cleanKey.includes('name') || 
+          cleanKey.includes('student') ||
+          cleanKey.includes('fullname')
+        ) {
+          newRow.name = val;
         } else {
+          // Keep extra data if needed later
           newRow[key] = row[key];
         }
       });
@@ -105,13 +124,15 @@ export default function UploadClassList() {
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json(ws);
+        
+        // Use defval to ensure empty cells don't shift columns weirdly
+        const rawData = XLSX.utils.sheet_to_json(ws, { defval: "" });
         
         const normalizedData = normalizeHeaders(rawData);
-        const validRows = normalizedData.filter((r: any) => r.regNo && r.name);
+        const validRows = normalizedData.filter((r: any) => r.regNo && r.name && r.regNo.length > 2);
 
         if (validRows.length === 0) {
-          toast.error('No valid rows found. Ensure columns "RegNo" and "Name" exist.');
+          toast.error('No valid rows found.');
           setFile(null);
           return;
         }
@@ -148,6 +169,7 @@ export default function UploadClassList() {
     setFile(null);
     setPreviewData([]);
     setUploadProgress(0);
+    setDetectedHeaders([]);
     if (eRef.current) eRef.current.value = "";
   };
 
@@ -292,35 +314,51 @@ export default function UploadClassList() {
               {/* Upload / Preview Area */}
               <div className="pt-4 border-t border-white/5">
                 {!file ? (
-                  <div 
-                    className={`relative p-10 border-2 border-dashed rounded-3xl text-center transition-all duration-300 ${
-                      canProceedToUpload 
-                        ? (isDragOver ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-white/10 bg-white/5 hover:border-primary/50 hover:bg-white/10 cursor-pointer') 
-                        : 'border-white/5 opacity-50 cursor-not-allowed'
-                    }`}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                    onDragLeave={() => setIsDragOver(false)}
-                    onDrop={handleDrop}
-                  >
-                    <input 
-                      ref={eRef}
-                      type="file" 
-                      accept=".xlsx, .xls" 
-                      onChange={handleFileSelect} 
-                      className="hidden" 
-                      id="file-upload" 
-                      disabled={!canProceedToUpload}
-                    />
-                    <label htmlFor="file-upload" className={`flex flex-col items-center w-full h-full ${canProceedToUpload ? 'cursor-pointer' : ''}`}>
-                      <div className="h-16 w-16 bg-black/40 rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-lg">
-                        <Upload className={`h-8 w-8 ${canProceedToUpload ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <>
+                    <div 
+                      className={`relative p-10 border-2 border-dashed rounded-3xl text-center transition-all duration-300 ${
+                        canProceedToUpload 
+                          ? (isDragOver ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-white/10 bg-white/5 hover:border-primary/50 hover:bg-white/10 cursor-pointer') 
+                          : 'border-white/5 opacity-50 cursor-not-allowed'
+                      }`}
+                      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                      onDragLeave={() => setIsDragOver(false)}
+                      onDrop={handleDrop}
+                    >
+                      <input 
+                        ref={eRef}
+                        type="file" 
+                        accept=".xlsx, .xls" 
+                        onChange={handleFileSelect} 
+                        className="hidden" 
+                        id="file-upload" 
+                        disabled={!canProceedToUpload}
+                      />
+                      <label htmlFor="file-upload" className={`flex flex-col items-center w-full h-full ${canProceedToUpload ? 'cursor-pointer' : ''}`}>
+                        <div className="h-16 w-16 bg-black/40 rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-lg">
+                          <Upload className={`h-8 w-8 ${canProceedToUpload ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </div>
+                        <div className="font-bold text-lg text-white mb-1">
+                          {canProceedToUpload ? "Click or Drag Excel File" : "Select Context First"}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Accepts Name & Matric No columns (e.g. 'Student Name', 'Matric No')</p>
+                      </label>
+                    </div>
+                    {/* Failure Feedback */}
+                    {detectedHeaders.length > 0 && (
+                      <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-200">
+                        <div className="flex items-center gap-2 mb-2 font-bold text-red-400">
+                          <AlertTriangle className="h-4 w-4" /> Import Failed
+                        </div>
+                        <p className="mb-2">We couldn't detect 'RegNo' and 'Name' columns. Found headers:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {detectedHeaders.map((h, i) => (
+                            <span key={i} className="px-2 py-1 rounded bg-black/40 border border-white/10 font-mono text-xs">{h}</span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="font-bold text-lg text-white mb-1">
-                        {canProceedToUpload ? "Click or Drag Excel File" : "Select Context First"}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Supported: .xlsx, .xls (Columns: RegNo, Name)</p>
-                    </label>
-                  </div>
+                    )}
+                  </>
                 ) : (
                   <MotionDiv initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                     {/* File Info Bar */}
@@ -371,8 +409,8 @@ export default function UploadClassList() {
                     <div className="pt-2">
                       {loading ? (
                         <div className="space-y-2">
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Uploading...</span>
+                          <div className="flex justify-between text-xs text-muted-foreground font-medium">
+                            <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Uploading...</span>
                             <span>{uploadProgress}%</span>
                           </div>
                           <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
@@ -380,7 +418,7 @@ export default function UploadClassList() {
                               className="h-full bg-emerald-500"
                               initial={{ width: 0 }}
                               animate={{ width: `${uploadProgress}%` }}
-                              transition={{ duration: 0.2 }}
+                              transition={{ duration: 0.1 }}
                             />
                           </div>
                         </div>
