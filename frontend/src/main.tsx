@@ -37,6 +37,7 @@ const CreateSession = lazy(() => import('./pages/rep/CreateSession'));
 const SessionList = lazy(() => import('./pages/rep/SessionList'));
 const RepClassList = lazy(() => import('./pages/rep/RepClassList'));
 const RepProfile = lazy(() => import('./pages/rep/Profile'));
+const LiveSession = lazy(() => import('./pages/rep/LiveSession'));
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
 const StudentProfile = lazy(() => import('./pages/student/Profile'));
@@ -92,6 +93,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/rep" element={<RepDashboard />} />
             <Route path="/rep/create-session" element={<CreateSession />} />
             <Route path="/rep/sessions" element={<SessionList />} />
+            <Route path="/rep/session/:id/monitor" element={<LiveSession />} />
             <Route path="/rep/students" element={<RepClassList />} />
             <Route path="/rep/profile" element={<RepProfile />} />
 
