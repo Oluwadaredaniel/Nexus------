@@ -81,34 +81,28 @@ export default function UploadClassList() {
   const normalizeHeaders = (data: any[]) => {
     if (!data || data.length === 0) return [];
     
-    // Store raw headers for debugging feedback
     const firstRow = data[0];
-    setDetectedHeaders(Object.keys(firstRow));
+    const headers = Object.keys(firstRow);
+    setDetectedHeaders(headers);
 
     return data.map(row => {
       const newRow: any = {};
-      Object.keys(row).forEach(key => {
-        // Normalize key: remove spaces, lowercase, remove special chars
+      headers.forEach(key => {
         const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const val = String(row[key]).trim();
+        const val = String(row[key] || '').trim();
         
-        // Smart Matching Logic: Check for substrings
-        if (
-          cleanKey.includes('regno') || 
-          cleanKey.includes('matric') || 
-          cleanKey.includes('admission') ||
-          cleanKey === 'id' ||
-          cleanKey === 'no'
-        ) {
+        // Robust Mapping Logic
+        const regKeywords = ['reg', 'matric', 'jamb', 'admission', 'identity', 'no', 'id'];
+        const nameKeywords = ['name', 'full', 'student', 'fullname'];
+
+        const isReg = regKeywords.some(k => cleanKey.includes(k));
+        const isName = nameKeywords.some(k => cleanKey.includes(k));
+
+        if (isReg && !newRow.regNo) {
           newRow.regNo = val;
-        } else if (
-          cleanKey.includes('name') || 
-          cleanKey.includes('student') ||
-          cleanKey.includes('fullname')
-        ) {
+        } else if (isName && !newRow.name) {
           newRow.name = val;
         } else {
-          // Keep extra data if needed later
           newRow[key] = row[key];
         }
       });
@@ -125,21 +119,20 @@ export default function UploadClassList() {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         
-        // Use defval to ensure empty cells don't shift columns weirdly
         const rawData = XLSX.utils.sheet_to_json(ws, { defval: "" });
-        
         const normalizedData = normalizeHeaders(rawData);
         const validRows = normalizedData.filter((r: any) => r.regNo && r.name && r.regNo.length > 2);
 
         if (validRows.length === 0) {
-          toast.error('No valid rows found.');
+          // Keep detectedHeaders so the UI shows what we found
           setFile(null);
           return;
         }
 
         setPreviewData(validRows);
         setFile(file);
-        toast.success(`Found ${validRows.length} valid entries`);
+        setDetectedHeaders([]); // Clear error state on success
+        toast.success(`Detected ${validRows.length} students`);
       } catch (err) {
         console.error(err);
         toast.error('Error parsing Excel file.');
@@ -157,12 +150,10 @@ export default function UploadClassList() {
     e.preventDefault();
     setIsDragOver(false);
     if (!canProceedToUpload) {
-      toast.error('Please select Faculty, Department and Level first.');
+      toast.error('Select Faculty, Dept and Level first.');
       return;
     }
-    if (e.dataTransfer.files?.[0]) {
-      processFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
   };
 
   const clearFile = () => {
@@ -199,21 +190,18 @@ export default function UploadClassList() {
       });
 
       toast.success(res.data.message || `Uploaded ${previewData.length} students`);
-      
-      // Reset
       clearFile();
       fetchSummaries();
     } catch (err: any) {
       console.error("Upload Error:", err);
-      toast.error(err.response?.data?.message || 'Failed to upload class list');
+      toast.error(err.response?.data?.message || 'Upload failed');
     } finally {
       setLoading(false);
-      setTimeout(() => setUploadProgress(0), 1000);
     }
   };
 
   const handleDeleteList = async (item: any) => {
-    const confirmMsg = `Are you sure you want to delete the ENTIRE class list for:\n\nDept: ${item._id.department}\nLevel: ${item._id.level}\n${item._id.option ? 'Option: '+item._id.option : ''}\n\nThis will remove ${item.studentCount} students from the roster.`;
+    const confirmMsg = `Delete the class list for ${item._id.department} Level ${item._id.level}?`;
     if (!window.confirm(confirmMsg)) return;
 
     const params = new URLSearchParams({
@@ -225,11 +213,9 @@ export default function UploadClassList() {
 
     try {
       await api.delete(`/admin/class-lists?${params.toString()}`);
-      toast.success('Class list deleted');
+      toast.success('Deleted');
       fetchSummaries();
-    } catch(e) {
-      toast.error('Failed to delete class list');
-    }
+    } catch(e) { toast.error('Failed to delete'); }
   };
 
   const canProceedToUpload = selectedFaculty && selectedDept && selectedLevel && (!hasOptions || selectedOption);
@@ -238,88 +224,86 @@ export default function UploadClassList() {
     <div className="space-y-8 max-w-6xl mx-auto">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Class List Management</h2>
-          <p className="text-muted-foreground">Manage student data and cohort sources.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-white">Class List Management</h2>
+          <p className="text-muted-foreground">Import and manage student cohorts.</p>
         </div>
         <Button variant="outline" onClick={downloadTemplate} className="gap-2 border-white/10 hover:bg-white/5">
-          <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Download Template
+          <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> Template
         </Button>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        
-        {/* Upload Card */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="glass-card border-primary/20 h-fit">
+          <Card className="glass-card border-primary/20">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-white">
                 <Upload className="h-5 w-5 text-primary" /> Configuration
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Context Selectors */}
               <div className="grid grid-cols-2 gap-4">
                  <div className="col-span-2 md:col-span-1">
-                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Faculty</label>
+                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1 mb-1 block">Faculty</label>
                    <select 
-                     className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 focus:ring-2 focus:ring-primary outline-none text-white appearance-none"
+                     className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 text-white outline-none focus:ring-2 focus:ring-primary appearance-none"
                      value={selectedFaculty}
                      onChange={(e) => { setSelectedFaculty(e.target.value); setSelectedDept(''); setSelectedOption(''); }}
                    >
-                     <option value="">-- Select Faculty --</option>
+                     <option value="">-- Faculty --</option>
                      {faculties.map(f => <option key={f._id} value={f.name}>{f.name}</option>)}
                    </select>
                  </div>
                  
                  <div className="col-span-2 md:col-span-1">
-                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Department</label>
+                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1 mb-1 block">Department</label>
                    <select 
-                     className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 focus:ring-2 focus:ring-primary outline-none text-white appearance-none"
+                     className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 text-white outline-none focus:ring-2 focus:ring-primary appearance-none"
                      value={selectedDept}
                      onChange={handleDeptChange}
                      disabled={!selectedFaculty}
                    >
-                     <option value="">-- Select Department --</option>
+                     <option value="">-- Department --</option>
                      {departments.map((d: any) => <option key={d._id} value={d.name}>{d.name}</option>)}
                    </select>
                  </div>
 
-                 {hasOptions && (
-                   <MotionDiv initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="col-span-2 md:col-span-1">
-                      <label className="text-xs font-medium uppercase tracking-wider text-primary ml-1">Option / Track</label>
-                      <select 
-                        className="w-full p-3 rounded-xl bg-zinc-900 border border-primary/50 focus:ring-2 focus:ring-primary outline-none text-white appearance-none"
-                        value={selectedOption}
-                        onChange={(e) => setSelectedOption(e.target.value)}
-                      >
-                        <option value="">-- Select Option --</option>
-                        {selectedDeptData.options.map((o: any) => <option key={o._id} value={o.name}>{o.name}</option>)}
-                      </select>
-                   </MotionDiv>
-                 )}
+                 <AnimatePresence>
+                   {hasOptions && (
+                     <MotionDiv initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="col-span-2 md:col-span-1">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1 mb-1 block">Option / Track</label>
+                        <select 
+                          className="w-full p-3 rounded-xl bg-zinc-900 border border-primary/50 text-white outline-none focus:ring-2 focus:ring-primary appearance-none"
+                          value={selectedOption}
+                          onChange={(e) => setSelectedOption(e.target.value)}
+                        >
+                          <option value="">-- Option --</option>
+                          {selectedDeptData.options.map((o: any) => <option key={o._id} value={o.name}>{o.name}</option>)}
+                        </select>
+                     </MotionDiv>
+                   )}
+                 </AnimatePresence>
 
                  <div className="col-span-2 md:col-span-1">
-                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground ml-1">Level</label>
+                   <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1 mb-1 block">Level</label>
                    <select 
-                     className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 focus:ring-2 focus:ring-primary outline-none text-white appearance-none"
+                     className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 text-white outline-none focus:ring-2 focus:ring-primary appearance-none"
                      value={selectedLevel}
                      onChange={(e) => setSelectedLevel(e.target.value)}
                    >
-                     <option value="">-- Select Level --</option>
+                     <option value="">-- Level --</option>
                      {levels.map((l: any) => <option key={l._id} value={l.name}>{l.name}</option>)}
                    </select>
                  </div>
               </div>
 
-              {/* Upload / Preview Area */}
               <div className="pt-4 border-t border-white/5">
                 {!file ? (
                   <>
                     <div 
                       className={`relative p-10 border-2 border-dashed rounded-3xl text-center transition-all duration-300 ${
                         canProceedToUpload 
-                          ? (isDragOver ? 'border-primary bg-primary/10 scale-[1.02]' : 'border-white/10 bg-white/5 hover:border-primary/50 hover:bg-white/10 cursor-pointer') 
-                          : 'border-white/5 opacity-50 cursor-not-allowed'
+                          ? (isDragOver ? 'border-primary bg-primary/10 scale-[1.01]' : 'border-white/10 bg-white/5 hover:border-primary/50 cursor-pointer') 
+                          : 'border-white/5 opacity-40 cursor-not-allowed'
                       }`}
                       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                       onDragLeave={() => setIsDragOver(false)}
@@ -334,74 +318,63 @@ export default function UploadClassList() {
                         id="file-upload" 
                         disabled={!canProceedToUpload}
                       />
-                      <label htmlFor="file-upload" className={`flex flex-col items-center w-full h-full ${canProceedToUpload ? 'cursor-pointer' : ''}`}>
-                        <div className="h-16 w-16 bg-black/40 rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-lg">
-                          <Upload className={`h-8 w-8 ${canProceedToUpload ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <label htmlFor="file-upload" className={`flex flex-col items-center ${canProceedToUpload ? 'cursor-pointer' : ''}`}>
+                        <div className="h-16 w-16 bg-black/40 rounded-full flex items-center justify-center mb-4 border border-white/10">
+                          <Upload className={`h-8 w-8 ${canProceedToUpload ? 'text-primary' : 'text-zinc-600'}`} />
                         </div>
-                        <div className="font-bold text-lg text-white mb-1">
-                          {canProceedToUpload ? "Click or Drag Excel File" : "Select Context First"}
+                        <div className="font-bold text-white mb-1">
+                          {canProceedToUpload ? "Drop Excel List Here" : "Complete Context Above"}
                         </div>
-                        <p className="text-sm text-muted-foreground">Accepts Name & Matric No columns (e.g. 'Student Name', 'Matric No')</p>
+                        <p className="text-xs text-muted-foreground">Supports: JAMB Reg, Full Name, Matric No, etc.</p>
                       </label>
                     </div>
-                    {/* Failure Feedback */}
+
                     {detectedHeaders.length > 0 && (
-                      <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-200">
-                        <div className="flex items-center gap-2 mb-2 font-bold text-red-400">
-                          <AlertTriangle className="h-4 w-4" /> Import Failed
+                      <MotionDiv initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                        <div className="flex items-center gap-2 mb-2 font-bold text-red-400 text-sm">
+                          <AlertTriangle className="h-4 w-4" /> Header Detection Failed
                         </div>
-                        <p className="mb-2">We couldn't detect 'RegNo' and 'Name' columns. Found headers:</p>
+                        <p className="text-xs text-red-200/70 mb-3">We couldn't identify the required 'RegNo' and 'Name' columns. Found these headers:</p>
                         <div className="flex flex-wrap gap-2">
                           {detectedHeaders.map((h, i) => (
-                            <span key={i} className="px-2 py-1 rounded bg-black/40 border border-white/10 font-mono text-xs">{h}</span>
+                            <span key={i} className="px-2 py-1 rounded bg-black border border-white/5 text-[10px] font-mono text-zinc-400">{h}</span>
                           ))}
                         </div>
-                      </div>
+                      </MotionDiv>
                     )}
                   </>
                 ) : (
                   <MotionDiv initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                    {/* File Info Bar */}
                     <div className="flex items-center justify-between p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                          <FileSpreadsheet className="h-5 w-5 text-emerald-500" />
-                        </div>
+                        <FileSpreadsheet className="h-5 w-5 text-emerald-500" />
                         <div>
-                          <div className="font-bold text-white text-sm">{file.name}</div>
-                          <div className="text-xs text-emerald-400 font-mono">{(file.size / 1024).toFixed(1)} KB • {previewData.length} Students</div>
+                          <div className="font-bold text-white text-sm truncate max-w-[200px]">{file.name}</div>
+                          <div className="text-[10px] text-emerald-400/80 uppercase font-bold tracking-widest">{previewData.length} valid entries</div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={clearFile} disabled={loading} className="hover:bg-red-500/20 hover:text-red-400">
-                        <X className="h-5 w-5" />
+                      <Button variant="ghost" size="icon" onClick={clearFile} disabled={loading} className="hover:bg-red-500/20">
+                        <X className="h-5 w-5 text-zinc-400" />
                       </Button>
                     </div>
 
-                    {/* Preview Table */}
-                    <div className="bg-black/40 rounded-xl border border-white/10 overflow-hidden max-h-[300px] overflow-y-auto custom-scrollbar">
-                      <table className="w-full text-sm text-left">
-                        <thead className="bg-white/5 text-muted-foreground text-xs uppercase sticky top-0 backdrop-blur-md">
+                    <div className="bg-black/40 rounded-xl border border-white/10 overflow-hidden max-h-[250px] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-white/5 text-muted-foreground uppercase sticky top-0 backdrop-blur-md">
                           <tr>
                             <th className="px-4 py-3">#</th>
-                            <th className="px-4 py-3">Reg No</th>
+                            <th className="px-4 py-3">Identifier (Reg/JAMB)</th>
                             <th className="px-4 py-3">Name</th>
-                            <th className="px-4 py-3">Status</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                          {previewData.slice(0, 100).map((row, i) => (
+                          {previewData.slice(0, 50).map((row, i) => (
                             <tr key={i} className="hover:bg-white/5">
-                              <td className="px-4 py-2 text-muted-foreground text-xs">{i + 1}</td>
+                              <td className="px-4 py-2 text-muted-foreground">{i + 1}</td>
                               <td className="px-4 py-2 font-mono text-white">{row.regNo}</td>
                               <td className="px-4 py-2 text-zinc-300">{row.name}</td>
-                              <td className="px-4 py-2">
-                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                              </td>
                             </tr>
                           ))}
-                          {previewData.length > 100 && (
-                            <tr><td colSpan={4} className="text-center py-2 text-xs text-muted-foreground">...and {previewData.length - 100} more</td></tr>
-                          )}
                         </tbody>
                       </table>
                     </div>
@@ -409,24 +382,23 @@ export default function UploadClassList() {
                     <div className="pt-2">
                       {loading ? (
                         <div className="space-y-2">
-                          <div className="flex justify-between text-xs text-muted-foreground font-medium">
-                            <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Uploading...</span>
+                          <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin text-emerald-500" /> Synchronizing...</span>
                             <span>{uploadProgress}%</span>
                           </div>
-                          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                             <motion.div 
-                              className="h-full bg-emerald-500"
+                              className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
                               initial={{ width: 0 }}
                               animate={{ width: `${uploadProgress}%` }}
-                              transition={{ duration: 0.1 }}
                             />
                           </div>
                         </div>
                       ) : (
                         <div className="flex justify-end gap-3">
-                          <Button variant="ghost" onClick={clearFile}>Cancel</Button>
+                          <Button variant="ghost" onClick={clearFile} className="text-zinc-500">Cancel</Button>
                           <Button onClick={uploadData} className="px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
-                            Confirm Upload ({previewData.length})
+                            Finalize Import
                           </Button>
                         </div>
                       )}
@@ -438,16 +410,11 @@ export default function UploadClassList() {
           </Card>
         </div>
 
-        {/* Summaries List */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-               <BookOpen className="h-5 w-5 text-zinc-400" /> Existing Cohorts
-             </h3>
-             <span className="text-xs text-muted-foreground">{summaries.length} Lists Found</span>
-          </div>
-          
-          <div className="grid gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-zinc-400" /> Active Cohorts
+          </h3>
+          <div className="grid gap-3 max-h-[550px] overflow-y-auto pr-2 custom-scrollbar">
             {summaries.map((item, i) => (
               <MotionDiv 
                 key={i}
@@ -456,42 +423,31 @@ export default function UploadClassList() {
                 transition={{ delay: i * 0.05 }}
                 className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors group relative"
               >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h4 className="font-bold text-white text-sm">{item._id.department}</h4>
-                    <p className="text-xs text-muted-foreground">{item._id.faculty}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex items-center gap-1.5 bg-primary/20 text-primary px-2 py-0.5 rounded text-[10px] font-bold border border-primary/20">
-                      <Users className="h-3 w-3" /> {item.studentCount}
-                    </div>
-                    <button 
-                      onClick={() => handleDeleteList(item)}
-                      className="p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-500 transition-colors"
-                      title="Delete this class list"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                <div className="flex justify-between items-start mb-1">
+                  <h4 className="font-bold text-white text-sm truncate max-w-[150px]">{item._id.department}</h4>
+                  <button onClick={() => handleDeleteList(item)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-500 transition-all">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-zinc-500 mt-2 pt-2 border-t border-white/5">
-                  <span className="bg-white/10 text-white px-2 py-0.5 rounded">{item._id.level} Level</span>
-                  {item._id.option && (
-                    <span className="bg-white/10 text-white px-2 py-0.5 rounded truncate max-w-[150px]">{item._id.option}</span>
-                  )}
-                  <span className="ml-auto">Updated: {new Date(item.lastUpdated).toLocaleDateString()}</span>
+                <div className="text-[10px] text-zinc-500 uppercase tracking-widest mb-3">{item._id.faculty}</div>
+                <div className="flex items-center gap-3">
+                   <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold border border-primary/20">
+                     <Users className="h-3 w-3" /> {item.studentCount}
+                   </div>
+                   <div className="text-[10px] text-zinc-600 ml-auto">
+                     Updated {new Date(item.lastUpdated).toLocaleDateString()}
+                   </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-white/5 pt-3">
+                   <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-white font-medium">{item._id.level} Lvl</span>
+                   {item._id.option && (
+                     <span className="text-[10px] bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300 font-medium truncate max-w-[100px]">{item._id.option}</span>
+                   )}
                 </div>
               </MotionDiv>
             ))}
-            {summaries.length === 0 && (
-              <div className="text-center py-10 border border-dashed border-white/10 rounded-xl">
-                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground text-sm">No class lists uploaded yet.</p>
-              </div>
-            )}
           </div>
         </div>
-
       </div>
     </div>
   );
