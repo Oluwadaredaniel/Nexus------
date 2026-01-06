@@ -5,13 +5,14 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Upload, AlertCircle, Layers, Users, BookOpen, Download, FileSpreadsheet, Trash2, X, CheckCircle2 } from 'lucide-react';
+import { Upload, AlertCircle, Layers, Users, BookOpen, Download, FileSpreadsheet, Trash2, X, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MotionDiv = motion.div as any;
 
 export default function UploadClassList() {
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [faculties, setFaculties] = useState<any[]>([]);
   const [levels, setLevels] = useState<any[]>([]);
   const [summaries, setSummaries] = useState<any[]>([]);
@@ -146,12 +147,15 @@ export default function UploadClassList() {
   const clearFile = () => {
     setFile(null);
     setPreviewData([]);
+    setUploadProgress(0);
     if (eRef.current) eRef.current.value = "";
   };
 
   const uploadData = async () => {
     if (!previewData.length) return;
     setLoading(true);
+    setUploadProgress(0);
+    
     try {
       const payload = {
          students: previewData,
@@ -163,16 +167,26 @@ export default function UploadClassList() {
          }
       };
 
-      const res = await api.post('/admin/upload-classlist', payload);
+      const res = await api.post('/admin/upload-classlist', payload, {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(progress);
+          }
+        }
+      });
+
       toast.success(res.data.message || `Uploaded ${previewData.length} students`);
       
       // Reset
       clearFile();
       fetchSummaries();
     } catch (err: any) {
+      console.error("Upload Error:", err);
       toast.error(err.response?.data?.message || 'Failed to upload class list');
     } finally {
       setLoading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
     }
   };
 
@@ -320,7 +334,7 @@ export default function UploadClassList() {
                           <div className="text-xs text-emerald-400 font-mono">{(file.size / 1024).toFixed(1)} KB • {previewData.length} Students</div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={clearFile} className="hover:bg-red-500/20 hover:text-red-400">
+                      <Button variant="ghost" size="icon" onClick={clearFile} disabled={loading} className="hover:bg-red-500/20 hover:text-red-400">
                         <X className="h-5 w-5" />
                       </Button>
                     </div>
@@ -354,11 +368,30 @@ export default function UploadClassList() {
                       </table>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-2">
-                      <Button variant="ghost" onClick={clearFile}>Cancel</Button>
-                      <Button onClick={uploadData} disabled={loading} className="px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
-                        {loading ? 'Processing...' : `Confirm Upload (${previewData.length})`}
-                      </Button>
+                    <div className="pt-2">
+                      {loading ? (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Uploading...</span>
+                            <span>{uploadProgress}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <motion.div 
+                              className="h-full bg-emerald-500"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${uploadProgress}%` }}
+                              transition={{ duration: 0.2 }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end gap-3">
+                          <Button variant="ghost" onClick={clearFile}>Cancel</Button>
+                          <Button onClick={uploadData} className="px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
+                            Confirm Upload ({previewData.length})
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </MotionDiv>
                 )}
@@ -403,25 +436,4 @@ export default function UploadClassList() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-zinc-500 mt-2 pt-2 border-t border-white/5">
-                  <span className="bg-white/10 text-white px-2 py-0.5 rounded">{item._id.level} Level</span>
-                  {item._id.option && (
-                    <span className="bg-white/10 text-white px-2 py-0.5 rounded truncate max-w-[150px]">{item._id.option}</span>
-                  )}
-                  <span className="ml-auto">Updated: {new Date(item.lastUpdated).toLocaleDateString()}</span>
-                </div>
-              </MotionDiv>
-            ))}
-            {summaries.length === 0 && (
-              <div className="text-center py-10 border border-dashed border-white/10 rounded-xl">
-                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground text-sm">No class lists uploaded yet.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
+            
