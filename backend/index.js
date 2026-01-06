@@ -31,32 +31,49 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/rep', repRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
-// Socket.IO
+// Socket.IO Logic
 io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
   socket.on('join_session', (sessionId) => {
     socket.join(sessionId);
+    console.log(`Socket ${socket.id} joined session room: ${sessionId}`);
   });
-  socket.on('attendance_marked', ({ sessionId, studentName }) => {
-    io.to(sessionId).emit('update_attendees', { studentName });
+
+  socket.on('leave_session', (sessionId) => {
+    socket.leave(sessionId);
+  });
+
+  // Updated to receive and broadcast full student object
+  socket.on('attendance_marked', ({ sessionId, student }) => {
+    // Broadcast to rep dashboard (LiveSession page)
+    io.to(sessionId).emit('update_attendees', { student });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
   });
 });
 
-// Database
+// Database & Bootstrap
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/nexus')
   .then(async () => {
     console.log('MongoDB Connected');
+    // Bootstrap Super Admin
     const adminExists = await User.findOne({ role: 'super_admin' });
     if (!adminExists) {
       await User.create({
-        regNo: '202550604111HA',
-        password: 'Daniel_2009',
-        name: 'Oluwadare Daniel',
+        regNo: 'SUPER_ADMIN',
+        password: 'admin', 
+        name: 'System Administrator',
         role: 'super_admin'
       });
-      console.log('Bootstrap: SUPER_ADMIN created (pw: admin)');
+      console.log('Bootstrap: SUPER_ADMIN account created (pw: admin)');
     }
   })
   .catch(err => console.error(err));
 
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+httpServer.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
