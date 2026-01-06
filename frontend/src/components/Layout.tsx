@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -17,7 +16,6 @@ export default function Layout() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Close mobile menu whenever location changes (extra safety)
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
@@ -154,25 +152,33 @@ export default function Layout() {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            {/* Backdrop - High Z-Index */}
+            {/* Backdrop */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm md:hidden pointer-events-auto"
             />
-            {/* Drawer - Higher Z-Index */}
+            {/* Drawer */}
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-y-0 left-0 z-[101] w-72 bg-[#09090b] border-r border-white/10 p-6 flex flex-col md:hidden shadow-2xl"
+              transition={{ type: "spring", stiffness: 400, damping: 40 }}
+              className="fixed inset-y-0 left-0 z-[110] w-72 bg-[#09090b] border-r border-white/10 p-6 flex flex-col md:hidden shadow-2xl pointer-events-auto"
             >
-              <div className="flex justify-end mb-2">
-                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="hover:bg-white/10 rounded-full">
-                  <X className="h-5 w-5 text-zinc-400 hover:text-white transition-colors" />
+              <div className="flex justify-end mb-4">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMobileMenuOpen(false);
+                  }} 
+                  className="hover:bg-white/10 rounded-full h-10 w-10 flex items-center justify-center"
+                >
+                  <X className="h-6 w-6 text-zinc-400 hover:text-white" />
                 </Button>
               </div>
               <NavContent mobile={true} />
@@ -182,7 +188,7 @@ export default function Layout() {
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth pt-16 md:pt-0">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth pt-16 md:pt-0 z-10">
         <AnimatePresence mode="wait">
           <MotionDiv
             key={location.pathname}
@@ -198,4 +204,4 @@ export default function Layout() {
       </main>
     </div>
   );
-            }
+}
