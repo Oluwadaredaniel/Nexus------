@@ -436,4 +436,25 @@ export default function UploadClassList() {
                     </button>
                   </div>
                 </div>
-            
+                <div className="flex items-center gap-3 text-xs text-zinc-500 mt-2 pt-2 border-t border-white/5">
+                  <span className="bg-white/10 text-white px-2 py-0.5 rounded">{item._id.level} Level</span>
+                  {item._id.option && (
+                    <span className="bg-white/10 text-white px-2 py-0.5 rounded truncate max-w-[150px]">{item._id.option}</span>
+                  )}
+                  <span className="ml-auto">Updated: {new Date(item.lastUpdated).toLocaleDateString()}</span>
+                </div>
+              </MotionDiv>
+            ))}
+            {summaries.length === 0 && (
+              <div className="text-center py-10 border border-dashed border-white/10 rounded-xl">
+                <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">No class lists uploaded yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
