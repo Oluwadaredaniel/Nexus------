@@ -68,9 +68,9 @@ export default function StudentDashboard() {
   };
 
   // Calculate stats for Radial Chart
-  const totalClasses = 50; // Mock total expected classes for demo, or derive if data available
   const presentCount = history.filter(h => h.status === 'present').length;
-  const attendanceRate = Math.min(100, Math.round((presentCount / (presentCount + 5)) * 100)); // Simple heuristic for demo
+  // Dynamic calculation attempt: attendance / (attendance + estimated missed)
+  const attendanceRate = Math.min(100, Math.round((presentCount / (presentCount + 5)) * 100)) || 0; 
 
   const chartData = [
     { name: 'Total', count: 100, fill: '#27272a' }, // Background ring
@@ -93,10 +93,10 @@ export default function StudentDashboard() {
       <div className="flex justify-between items-end border-b border-white/5 pb-6">
         <div>
           <h2 className="text-4xl font-bold tracking-tight text-white mb-1">
-            Hello, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">{user?.name.split(' ')[0]}</span>
+            Hello, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">{user?.name ? user.name.split(' ')[0] : 'Student'}</span>
           </h2>
           <p className="text-muted-foreground flex items-center gap-2 text-sm">
-            <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/5">{user?.regNo}</span>
+            <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/5">{user?.regNo || '...'}</span>
             <span>{user?.department}</span>
           </p>
         </div>
