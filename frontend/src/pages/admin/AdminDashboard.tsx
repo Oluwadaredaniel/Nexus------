@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Users, BookOpen, UserCheck, Activity, ArrowUpRight, GraduationCap, Building2, Layers, ShieldCheck } from 'lucide-react';
+import { Users, BookOpen, UserCheck, Activity, ArrowUpRight, GraduationCap, Building2, Layers, ShieldCheck, Trash2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../../store/authStore';
@@ -135,26 +135,37 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
              <div className="space-y-6">
-               {stats.recentActivity.map((act: any, i: number) => (
-                 <MotionDiv 
-                   key={act._id} 
-                   initial={{ opacity: 0, x: 20 }}
-                   animate={{ opacity: 1, x: 0 }}
-                   transition={{ delay: i * 0.1 }}
-                   className="flex items-center gap-4 group"
-                 >
-                   <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-zinc-800 to-zinc-900 border border-white/10 flex items-center justify-center text-xs font-bold text-white group-hover:border-primary/50 transition-colors shadow-lg">
-                     {act.student.name.charAt(0)}
-                   </div>
-                   <div className="flex-1 space-y-1">
-                     <p className="text-sm font-medium leading-none text-white group-hover:text-primary transition-colors">{act.student.name}</p>
-                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{act.student.regNo}</p>
-                   </div>
-                   <div className="font-mono text-xs text-muted-foreground bg-white/5 px-2 py-1 rounded">
-                     {new Date(act.markedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                   </div>
-                 </MotionDiv>
-               ))}
+               {stats.recentActivity.map((act: any, i: number) => {
+                 // Check if student object still exists or if user was deleted
+                 const hasProfile = !!act.student;
+                 const displayName = hasProfile ? act.student.name : 'Deleted Account';
+                 const displayReg = hasProfile ? act.student.regNo : act.regNo; // Fallback to attendance record's regNo
+
+                 return (
+                   <MotionDiv 
+                     key={act._id} 
+                     initial={{ opacity: 0, x: 20 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     transition={{ delay: i * 0.1 }}
+                     className="flex items-center gap-4 group"
+                   >
+                     <div className={`h-10 w-10 rounded-full border border-white/10 flex items-center justify-center text-xs font-bold text-white transition-colors shadow-lg ${hasProfile ? 'bg-gradient-to-tr from-zinc-800 to-zinc-900 group-hover:border-primary/50' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
+                       {hasProfile ? displayName.charAt(0) : <Trash2 className="h-4 w-4" />}
+                     </div>
+                     <div className="flex-1 space-y-1">
+                       <p className={`text-sm font-medium leading-none transition-colors ${hasProfile ? 'text-white group-hover:text-primary' : 'text-zinc-500 italic'}`}>
+                         {displayName}
+                       </p>
+                       <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono">
+                         {displayReg}
+                       </p>
+                     </div>
+                     <div className="font-mono text-xs text-muted-foreground bg-white/5 px-2 py-1 rounded">
+                       {new Date(act.markedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                     </div>
+                   </MotionDiv>
+                 );
+               })}
                {stats.recentActivity.length === 0 && <p className="text-sm text-muted-foreground text-center py-10">Waiting for live data...</p>}
              </div>
           </CardContent>
