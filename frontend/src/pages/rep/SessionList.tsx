@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { formatDate } from '../../lib/utils';
+import { Card, CardContent } from '../../components/ui/card';
 import { motion } from 'framer-motion';
 
 const MotionDiv = motion.div as any;
@@ -46,13 +47,19 @@ export default function SessionList() {
       const isBroad = session?.department === 'ALL' || session?.option === 'ALL';
 
       const data = res.data.map((r: any) => {
+        // Robust Fallback: 
+        // If student deleted, use preserved RegNo from attendance record.
+        // Mark name as [Deleted] to be explicit.
+        const isDeleted = !r.student;
+        
         const row: any = {
-          RegNo: r.regNo,
-          Name: r.student.name,
+          RegNo: r.student?.regNo || r.regNo,
+          Name: r.student?.name || `[Deleted] - ${r.regNo}`,
         };
+        
         if (isBroad) {
-          row.Department = r.student.department || '-';
-          row.Option = r.student.option || '-';
+          row.Department = r.student?.department || 'N/A';
+          row.Option = r.student?.option || '-';
         }
         row.Time = formatDate(r.markedAt);
         row.Status = r.status.toUpperCase();
