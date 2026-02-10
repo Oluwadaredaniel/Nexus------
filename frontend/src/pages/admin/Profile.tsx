@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button';
 import { Modal } from '../../components/ui/modal';
 import { useAuthStore } from '../../store/authStore';
-import { ShieldAlert, User, Calendar, Hash, Edit2, GraduationCap, Building2 } from 'lucide-react';
+import { ShieldAlert, User, Calendar, Hash, Edit2, GraduationCap, Building2, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MotionDiv = motion.div as any;
@@ -45,6 +45,8 @@ export default function AdminProfile() {
   // Pre-fill form when modal opens
   useEffect(() => {
     if (isEditOpen && user) {
+      setValue('name', user.name);
+      setValue('matricNo', user.matricNo || '');
       setValue('faculty', user.faculty || '');
       setValue('department', user.department || '');
       setValue('option', user.option || '');
@@ -98,6 +100,12 @@ export default function AdminProfile() {
                    <span className="text-muted-foreground">ID</span>
                    <span className="font-mono text-white">{user.regNo}</span>
                  </div>
+                 {user.matricNo && (
+                   <div className="flex justify-between text-sm">
+                     <span className="text-muted-foreground">Matric</span>
+                     <span className="font-mono text-cyan-400">{user.matricNo}</span>
+                   </div>
+                 )}
                  <div className="flex justify-between text-sm">
                    <span className="text-muted-foreground">Access</span>
                    <span className="text-green-400">Full System</span>
@@ -163,6 +171,12 @@ export default function AdminProfile() {
                       <div className="text-xs text-indigo-300 uppercase tracking-wider mb-1">Level</div>
                       <div className="font-bold text-white">{user.level} Lvl</div>
                    </div>
+                   {user.matricNo && (
+                     <div className="p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
+                        <div className="text-xs text-indigo-300 uppercase tracking-wider mb-1">Matric No</div>
+                        <div className="font-bold text-white font-mono">{user.matricNo}</div>
+                     </div>
+                   )}
                 </div>
               ) : (
                 <div className="p-4 rounded-lg border border-dashed border-white/10 text-center text-sm text-muted-foreground">
@@ -200,6 +214,19 @@ export default function AdminProfile() {
               {...register('name')} 
               className="w-full p-2.5 rounded-lg bg-zinc-900 border border-white/10 focus:ring-2 focus:ring-indigo-500 outline-none"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-cyan-400">Matriculation Number</label>
+            <div className="relative">
+              <ShieldCheck className="absolute left-3 top-2.5 h-5 w-5 text-zinc-500" />
+              <input 
+                {...register('matricNo')} 
+                placeholder="e.g. CSC/2021/042"
+                className="w-full pl-10 p-2.5 rounded-lg bg-zinc-900 border border-cyan-500/30 focus:ring-2 focus:ring-cyan-500 outline-none uppercase font-mono"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Required if you want to test attendance.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

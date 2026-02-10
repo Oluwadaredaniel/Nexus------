@@ -38,7 +38,7 @@ export default function Layout() {
     { icon: Layers, label: "Departments", path: "/admin/departments" },
     { icon: BarChart, label: "Levels", path: "/admin/levels" },
     { icon: BookOpen, label: "Courses", path: "/admin/courses" },
-    { icon: Network, label: "Integrations", path: "/admin/integrations" },
+    
     { icon: Users, label: "Students", path: "/admin/students" },
     { icon: UserCog, label: "Reps", path: "/admin/reps" },
     { icon: ShieldAlert, label: "Admins", path: "/admin/admins" },
@@ -46,7 +46,7 @@ export default function Layout() {
     { icon: Users, label: "Upload Lists", path: "/admin/class-lists" },
     { icon: CheckCircle, label: "Attendance", path: "/mark-attendance" },
     { icon: GraduationCap, label: "History", path: "/history" },
-    { icon: HelpCircle, label: "User Manual", path: "/help" },
+    
   ];
 
   const repLinks = [
@@ -58,7 +58,7 @@ export default function Layout() {
     { icon: CheckCircle, label: "Attendance", path: "/mark-attendance" },
     { icon: GraduationCap, label: "History", path: "/history" },
     { icon: User, label: "My Profile", path: "/rep/profile" },
-    { icon: HelpCircle, label: "User Manual", path: "/help" },
+   
   ];
 
   const studentLinks = [
@@ -66,7 +66,7 @@ export default function Layout() {
     { icon: CheckCircle, label: "Attendance", path: "/mark-attendance" },
     { icon: GraduationCap, label: "History", path: "/history" },
     { icon: User, label: "ID Card", path: "/student/profile" },
-    { icon: HelpCircle, label: "Help Guide", path: "/help" },
+    
   ];
 
   let links = studentLinks;
