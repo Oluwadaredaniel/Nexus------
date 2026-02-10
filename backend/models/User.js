@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
-  regNo: { type: String, required: true, unique: true, uppercase: true },
+  regNo: { type: String, required: true, unique: true, uppercase: true }, // Used for initial signup (List ID)
+  matricNo: { type: String, uppercase: true, default: null }, // The actual Matric Number
   password: { type: String, required: true },
   name: { type: String, required: true },
   role: { 
@@ -13,9 +14,14 @@ const userSchema = new mongoose.Schema({
   },
   faculty: { type: String },
   department: { type: String },
-  option: { type: String }, // For sub-tracks
+  option: { type: String }, 
   level: { type: String },
   isPasswordChanged: { type: Boolean, default: false },
+  
+  // Security & Billing
+  boundDeviceId: { type: String }, 
+  isAccountActive: { type: Boolean, default: false },
+  activationExpiry: { type: Date }
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

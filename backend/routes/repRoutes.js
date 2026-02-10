@@ -3,7 +3,8 @@ import express from 'express';
 import { 
   createSession, getMySessions, extendSession, endSession, 
   getClassStudents, getRepStats, addStudentToClassList, updateClassListEntry,
-  getAvailableCourses, deleteClassListEntry
+  getAvailableCourses, deleteClassListEntry,
+  getFacultySubReps, assignSubRepRole, removeSubRepRole
 } from '../controllers/repController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
@@ -24,6 +25,11 @@ router.get('/students', getClassStudents);
 router.get('/stats', getRepStats);
 router.post('/class-list', addStudentToClassList);
 router.put('/class-list/:id', updateClassListEntry);
-router.delete('/class-list/:id', deleteClassListEntry); // New route
+router.delete('/class-list/:id', deleteClassListEntry);
+
+// Faculty Rep Team Management
+router.get('/team', getFacultySubReps);
+router.post('/team/assign', assignSubRepRole);
+router.put('/team/:userId/demote', removeSubRepRole);
 
 export default router;

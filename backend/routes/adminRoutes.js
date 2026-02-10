@@ -3,11 +3,12 @@ import express from 'express';
 import { 
   addFaculty, getFaculties, deleteFaculty, addDepartment, deleteDepartment,
   getCourses, addCourse, updateCourse, deleteCourse,
-  uploadClassList, getClassListSummaries, deleteClassList, assignClassRep, 
-  getAllStudents, deleteUser, resetUserPassword, getAllReps, demoteRep,
+  uploadClassList, assignClassRep, 
+  getAllStudents, deleteUser, getAllReps, demoteRep,
   getAllActiveSessions, forceEndSession, 
   getLevels, addLevel, deleteLevel,
-  getAdmins, createSuperAdmin, getAnalytics
+  getAdmins, createSuperAdmin, getAnalytics,
+  getSystemSettings, updateSystemSettings
 } from '../controllers/adminController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
@@ -15,6 +16,10 @@ const router = express.Router();
 
 router.use(protect);
 router.use(authorize('super_admin'));
+
+// Config
+router.get('/settings', getSystemSettings);
+router.put('/settings', updateSystemSettings);
 
 // Structure
 router.post('/faculties', addFaculty);
@@ -37,10 +42,7 @@ router.delete('/courses/:id', deleteCourse);
 // People
 router.get('/students', getAllStudents);
 router.delete('/users/:id', deleteUser);
-router.put('/users/:id/reset-password', resetUserPassword);
 router.post('/upload-classlist', uploadClassList);
-router.get('/classlist-summaries', getClassListSummaries);
-router.delete('/class-lists', deleteClassList); // New route for bulk delete
 router.post('/assign-classrep', assignClassRep);
 router.get('/reps', getAllReps);
 router.put('/reps/:id/demote', demoteRep);

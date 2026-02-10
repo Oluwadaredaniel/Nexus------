@@ -19,6 +19,7 @@ const ChangePassword = lazy(() => import('./pages/auth/ChangePassword'));
 const MarkAttendance = lazy(() => import('./pages/shared/MarkAttendance'));
 const AttendanceHistory = lazy(() => import('./pages/student/AttendanceHistory'));
 
+
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const UploadClassList = lazy(() => import('./pages/admin/UploadClassList'));
 const ManageCourses = lazy(() => import('./pages/admin/ManageCourses'));
@@ -32,12 +33,16 @@ const ManageReps = lazy(() => import('./pages/admin/ManageReps'));
 const SessionManagement = lazy(() => import('./pages/admin/SessionManagement'));
 const AdminProfile = lazy(() => import('./pages/admin/Profile'));
 
+
+
+
 const RepDashboard = lazy(() => import('./pages/rep/RepDashboard'));
 const CreateSession = lazy(() => import('./pages/rep/CreateSession'));
 const SessionList = lazy(() => import('./pages/rep/SessionList'));
 const RepClassList = lazy(() => import('./pages/rep/RepClassList'));
 const RepProfile = lazy(() => import('./pages/rep/Profile'));
 const LiveSession = lazy(() => import('./pages/rep/LiveSession'));
+const ManageTeam = lazy(() => import('./pages/rep/ManageTeam')); // New
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
 const StudentProfile = lazy(() => import('./pages/student/Profile'));
@@ -62,18 +67,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Landing />} />
-          
-          {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           
-          {/* Protected Routes wrapped in Layout */}
           <Route element={<Layout />}>
             <Route path="/auth/change-password" element={<ChangePassword />} />
-            
-            {/* Shared Routes */}
             <Route path="/mark-attendance" element={<MarkAttendance />} />
             <Route path="/history" element={<AttendanceHistory />} />
+           
+
+         
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
@@ -88,6 +91,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/admin/reps" element={<ManageReps />} />
             <Route path="/admin/sessions" element={<SessionManagement />} />
             <Route path="/admin/profile" element={<AdminProfile />} />
+           
 
             {/* Rep Routes */}
             <Route path="/rep" element={<RepDashboard />} />
@@ -96,6 +100,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/rep/session/:id/monitor" element={<LiveSession />} />
             <Route path="/rep/students" element={<RepClassList />} />
             <Route path="/rep/profile" element={<RepProfile />} />
+            <Route path="/rep/team" element={<ManageTeam />} />
 
             {/* Student Routes */}
             <Route path="/student" element={<StudentDashboard />} />

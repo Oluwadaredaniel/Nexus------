@@ -12,6 +12,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import repRoutes from './routes/repRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import User from './models/User.js';
+import Session from './models/Session.js';
+import Attendance from './models/Attendance.js';
 
 dotenv.config();
 
@@ -31,44 +33,33 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/rep', repRoutes);
 app.use('/api/attendance', attendanceRoutes);
 
-// Socket.IO Logic
+// Socket.IO for Live Updates
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
   socket.on('join_session', (sessionId) => {
     socket.join(sessionId);
-    console.log(`Socket ${socket.id} joined session room: ${sessionId}`);
   });
 
-  socket.on('leave_session', (sessionId) => {
-    socket.leave(sessionId);
-  });
-
-  // Updated to receive and broadcast full student object
   socket.on('attendance_marked', ({ sessionId, student }) => {
-    // Broadcast to rep dashboard (LiveSession page)
+    // student object contains { name, regNo }
     io.to(sessionId).emit('update_attendees', { student });
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
   });
 });
 
-// Database & Bootstrap
+// Database & Server Setup
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/nexus')
   .then(async () => {
     console.log('MongoDB Connected');
-    // Bootstrap Super Admin
+    
+    // Create Default Super Admin if none exists
     const adminExists = await User.findOne({ role: 'super_admin' });
     if (!adminExists) {
-      await User.create({
-        regNo: 'SUPER_ADMIN',
+      await User.create({ 
+        regNo: 'SUPER_ADMIN', 
         password: 'admin', 
-        name: 'System Administrator',
-        role: 'super_admin'
+        name: 'System Administrator', 
+        role: 'super_admin' 
       });
-      console.log('Bootstrap: SUPER_ADMIN account created (pw: admin)');
+      console.log('Bootstrap: SUPER_ADMIN created (pw: admin)');
     }
   })
   .catch(err => console.error(err));

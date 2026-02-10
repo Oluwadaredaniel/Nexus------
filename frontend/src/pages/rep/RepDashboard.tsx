@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Users, Wifi, GraduationCap, Play, UserCheck, AlertCircle } from 'lucide-react';
+import { Users, Wifi, GraduationCap, Play, UserCheck, AlertCircle, Shield } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -26,6 +26,7 @@ export default function RepDashboard() {
   }, []);
 
   const onboardingRate = stats ? Math.round((stats.totalRegistered / stats.totalList) * 100) || 0 : 0;
+  const isFacultyRep = user?.role === 'faculty_rep';
 
   return (
     <div className="space-y-8">
@@ -34,9 +35,16 @@ export default function RepDashboard() {
           <h2 className="text-3xl font-bold tracking-tight">Rep Overview</h2>
           <p className="text-muted-foreground">{user?.department} — Level {user?.level}</p>
         </div>
-        <Button onClick={() => navigate('/rep/create-session')} className="h-12 px-6 shadow-lg shadow-primary/20">
-           <Play className="mr-2 h-5 w-5" /> Start Session
-        </Button>
+        <div className="flex gap-2">
+          {isFacultyRep && (
+            <Button variant="secondary" onClick={() => navigate('/rep/team')} className="h-12 border border-white/10">
+              <Shield className="mr-2 h-4 w-4" /> Manage Team
+            </Button>
+          )}
+          <Button onClick={() => navigate('/rep/create-session')} className="h-12 px-6 shadow-lg shadow-primary/20">
+             <Play className="mr-2 h-5 w-5" /> Start Session
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

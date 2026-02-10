@@ -76,8 +76,15 @@ export default function Profile() {
             {/* Info */}
             <div className="text-center space-y-2 mb-8 w-full">
               <h3 className="text-2xl font-bold text-white">{profile.name}</h3>
-              <p className="text-cyan-400 font-mono text-lg tracking-wider">{profile.regNo}</p>
-              <div className="flex justify-center gap-2 mt-2">
+              
+              <div className="flex flex-col items-center">
+                <p className="text-cyan-400 font-mono text-xl tracking-wider font-bold">
+                  {profile.matricNo || 'NO MATRIC NO'}
+                </p>
+                <p className="text-xs text-zinc-500 font-mono mt-1">ID: {profile.regNo}</p>
+              </div>
+
+              <div className="flex justify-center gap-2 mt-4">
                 <span className="px-3 py-1 rounded-full bg-white/10 text-xs font-medium border border-white/5">
                   {profile.department}
                 </span>
@@ -92,7 +99,7 @@ export default function Profile() {
               )}
             </div>
 
-            {/* Metrics Section (Replaces QR) */}
+            {/* Metrics Section */}
             <div className="mt-auto w-full grid grid-cols-2 gap-3">
                <div className="p-3 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md">
                   <div className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
@@ -113,7 +120,7 @@ export default function Profile() {
                   <div className="text-sm font-medium text-white truncate">
                     {lastClass ? (
                       <>
-                        {lastClass.session?.course?.code} • {formatDate(lastClass.markedAt)}
+                        {lastClass.session?.course?.code || 'GEN'} • {formatDate(lastClass.markedAt)}
                       </>
                     ) : 'No activity yet'}
                   </div>

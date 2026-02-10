@@ -11,13 +11,14 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { formatDate } from '../../lib/utils';
-import { Card, CardContent } from '../../components/ui/card';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '../../store/authStore';
 
 const MotionDiv = motion.div as any;
 
 export default function SessionList() {
   const [sessions, setSessions] = useState<any[]>([]);
+  const { user } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => { fetchSessions(); }, []);
@@ -39,66 +40,102 @@ export default function SessionList() {
   };
 
   const handleExport = async (sessionId: string, format: 'xlsx' | 'pdf') => {
+    const session = sessions.find(s => s._id === sessionId);
+    if (!session) return;
+
+    // Smart default filename based on context
+    const dateStr = formatDate(session.startTime).split(',')[0].replace(/\//g, '-');
+    const courseCode = session.course ? session.course.code : 'ROLL-CALL';
+    const mainTitle = session.course ? session.course.title : session.title;
+    
+    // Auto-generate a meaningful name based on scope
+    let defaultName = `${session.department} - ${courseCode} - ${dateStr}`;
+    if (user?.role === 'faculty_rep' && session.department === 'ALL') {
+       defaultName = `${user.faculty} - ${courseCode} - ${dateStr}`;
+    }
+
+    // --- USER INTERACTION: ASK FOR NAME ---
+    const fileName = window.prompt("Set File Name / Report Title:", defaultName);
+    if (!fileName) return; // User cancelled
+
     const toastId = toast.loading('Generating report...');
     try {
       const res = await api.get(`/attendance/session/${sessionId}/attendees`);
-      
-      const session = sessions.find(s => s._id === sessionId);
-      const isBroad = session?.department === 'ALL' || session?.option === 'ALL';
+      const rawData = res.data;
 
-      const data = res.data.map((r: any) => {
-        // Robust Fallback: 
-        // If student deleted, use preserved RegNo from attendance record.
-        // Mark name as [Deleted] to be explicit.
-        const isDeleted = !r.student;
+      const sortedData = rawData.sort((a: any, b: any) => {
+        // Advanced sorting: Dept -> Option -> Matric
+        const deptA = a.student?.department || '';
+        const deptB = b.student?.department || '';
+        const optA = a.student?.option || '';
+        const optB = b.student?.option || '';
+        const matA = a.student?.matricNo || a.regNo || '';
+        const matB = b.student?.matricNo || b.regNo || '';
+
+        if (user?.role === 'faculty_rep') {
+          return deptA.localeCompare(deptB) || optA.localeCompare(optB) || matA.localeCompare(matB);
+        } else if (user?.role === 'dept_rep') {
+          return optA.localeCompare(optB) || matA.localeCompare(matB);
+        } else {
+          return matA.localeCompare(matB);
+        }
+      });
+
+      const exportRows = sortedData.map((r: any) => {
+        const matric = r.student?.matricNo || '-';
+        const regNo = r.student?.regNo || r.regNo;
         
         const row: any = {
-          RegNo: r.student?.regNo || r.regNo,
-          Name: r.student?.name || `[Deleted] - ${r.regNo}`,
+          'Matric No': matric,
+          'List ID (RegNo)': regNo,
+          'Name': r.student?.name || `[Deleted] - ${r.regNo}`,
         };
-        
-        if (isBroad) {
-          row.Department = r.student?.department || 'N/A';
-          row.Option = r.student?.option || '-';
+
+        if (user?.role === 'faculty_rep' || user?.role === 'dept_rep') {
+           row['Department'] = r.student?.department || 'N/A';
+           row['Option'] = r.student?.option || 'General';
         }
-        row.Time = formatDate(r.markedAt);
-        row.Status = r.status.toUpperCase();
+
+        row['Time'] = formatDate(r.markedAt);
+        row['Status'] = r.status.toUpperCase();
         return row;
       });
 
-      if (data.length === 0) {
+      if (exportRows.length === 0) {
         toast.dismiss(toastId);
         toast.error('No attendance records found.');
         return;
       }
 
       if (format === 'xlsx') {
-        const ws = XLSX.utils.json_to_sheet(data);
+        const ws = XLSX.utils.json_to_sheet(exportRows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Attendance");
         const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([excelBuffer], {type: 'application/octet-stream'});
-        saveAs(blob, `attendance_${sessionId}.xlsx`);
+        saveAs(blob, `${fileName}.xlsx`);
       } else {
-        const doc = new jsPDF();
-        const title = session ? `${session.course.code} - ${session.course.title}` : 'Attendance Report';
-        doc.text(title, 14, 15);
-        doc.setFontSize(10);
-        doc.text(`Date: ${formatDate(new Date())} | Scope: ${isBroad ? 'Multi-Department' : 'Class'}`, 14, 22);
+        const doc = new jsPDF('l'); // Landscape for better column fit
         
-        const headers = isBroad 
-          ? [['Reg No', 'Name', 'Dept', 'Option', 'Time', 'Status']]
-          : [['Reg No', 'Name', 'Time', 'Status']];
+        doc.setFontSize(14);
+        doc.text(fileName, 14, 15); // Use the custom title
+        
+        doc.setFontSize(10);
+        doc.text(`Generated By: ${user?.name} (${user?.role?.replace('_', ' ').toUpperCase()})`, 14, 22);
+        doc.text(`Context: ${mainTitle}`, 14, 28);
+        
+        const headers = Object.keys(exportRows[0]).map(k => k);
+        const body = exportRows.map((row: any) => Object.values(row));
 
         (doc as any).autoTable({
-          startY: 25,
-          head: headers,
-          body: data.map((row: any) => Object.values(row)),
+          startY: 32,
+          head: [headers],
+          body: body,
           theme: 'grid',
           styles: { fontSize: 8 },
           headStyles: { fillColor: [79, 70, 229] }
         });
-        doc.save(`attendance_${sessionId}.pdf`);
+        doc.save(`${fileName}.pdf`);
       }
       toast.success('Export downloaded!', { id: toastId });
     } catch (e) { 

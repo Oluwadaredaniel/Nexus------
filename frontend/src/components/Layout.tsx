@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, LayoutDashboard, Users, BookOpen, GraduationCap, Building2, UserCog, User, Home, Radio, CheckCircle, ShieldAlert, BarChart, Layers, Menu, X } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, BookOpen, GraduationCap, Building2, UserCog, User, Home, Radio, CheckCircle, ShieldAlert, BarChart, Layers, Menu, X, HelpCircle, Network, Shield } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import InstallPrompt from './InstallPrompt';
 import OfflineBanner from './OfflineBanner';
+import MatricNoModal from './MatricNoModal';
 
 const MotionDiv = motion.div as any;
 
@@ -16,18 +18,14 @@ export default function Layout() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location.pathname]);
+  // Close mobile menu whenever the route changes
+  useEffect(() => { setIsMobileMenuOpen(false); }, [location.pathname]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  const handleLogout = () => { logout(); navigate('/login'); };
 
   const handleProfileClick = () => {
     if (user?.role === 'super_admin') navigate('/admin/profile');
-    else if (user?.role === 'class_rep') navigate('/rep/profile');
+    else if (user?.role && user.role.includes('rep')) navigate('/rep/profile');
     else navigate('/student/profile');
     setIsMobileMenuOpen(false);
   };
@@ -40,6 +38,7 @@ export default function Layout() {
     { icon: Layers, label: "Departments", path: "/admin/departments" },
     { icon: BarChart, label: "Levels", path: "/admin/levels" },
     { icon: BookOpen, label: "Courses", path: "/admin/courses" },
+    { icon: Network, label: "Integrations", path: "/admin/integrations" },
     { icon: Users, label: "Students", path: "/admin/students" },
     { icon: UserCog, label: "Reps", path: "/admin/reps" },
     { icon: ShieldAlert, label: "Admins", path: "/admin/admins" },
@@ -47,15 +46,19 @@ export default function Layout() {
     { icon: Users, label: "Upload Lists", path: "/admin/class-lists" },
     { icon: CheckCircle, label: "Attendance", path: "/mark-attendance" },
     { icon: GraduationCap, label: "History", path: "/history" },
+    { icon: HelpCircle, label: "User Manual", path: "/help" },
   ];
 
   const repLinks = [
     { icon: LayoutDashboard, label: "Dash", path: "/rep" },
     { icon: Radio, label: "Sessions", path: "/rep/sessions" },
     { icon: Users, label: "Class List", path: "/rep/students" },
+    // Only show Team Management to Faculty Reps
+    ...(user.role === 'faculty_rep' ? [{ icon: Shield, label: "Manage Team", path: "/rep/team" }] : []),
     { icon: CheckCircle, label: "Attendance", path: "/mark-attendance" },
     { icon: GraduationCap, label: "History", path: "/history" },
     { icon: User, label: "My Profile", path: "/rep/profile" },
+    { icon: HelpCircle, label: "User Manual", path: "/help" },
   ];
 
   const studentLinks = [
@@ -63,9 +66,12 @@ export default function Layout() {
     { icon: CheckCircle, label: "Attendance", path: "/mark-attendance" },
     { icon: GraduationCap, label: "History", path: "/history" },
     { icon: User, label: "ID Card", path: "/student/profile" },
+    { icon: HelpCircle, label: "Help Guide", path: "/help" },
   ];
 
-  const links = user.role === 'super_admin' ? adminLinks : user.role === 'class_rep' ? repLinks : studentLinks;
+  let links = studentLinks;
+  if (user.role === 'super_admin') links = adminLinks;
+  else if (user.role && user.role.includes('rep')) links = repLinks;
 
   const NavContent = ({ mobile = false }: { mobile?: boolean }) => (
     <>
@@ -75,7 +81,7 @@ export default function Layout() {
         </div>
         <div>
           <h1 className="text-xl font-bold tracking-tight leading-none text-white">NEXUS</h1>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium">OAU Suite v1.0</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium">Academic Suite</span>
         </div>
       </div>
       
@@ -88,10 +94,7 @@ export default function Layout() {
               "w-full justify-start gap-3 h-10 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-all duration-300 relative overflow-hidden",
               location.pathname === link.path && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary font-semibold shadow-[0_0_20px_-10px_rgba(139,92,246,0.5)]"
             )}
-            onClick={() => {
-              navigate(link.path);
-              if (mobile) setIsMobileMenuOpen(false);
-            }}
+            onClick={() => { navigate(link.path); if (mobile) setIsMobileMenuOpen(false); }}
           >
             {location.pathname === link.path && (
               <MotionDiv layoutId="active-pill" className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />
@@ -126,16 +129,14 @@ export default function Layout() {
   return (
     <div className="flex h-screen bg-background overflow-hidden relative selection:bg-primary/20 font-sans">
       <div className="absolute inset-0 bg-[url('/bg-grain.png')] opacity-15 pointer-events-none z-0 mix-blend-overlay" />
-      
       <OfflineBanner />
       <InstallPrompt />
+      <MatricNoModal />
 
-      {/* Desktop Sidebar */}
       <aside className="w-64 border-r border-white/5 bg-black/20 backdrop-blur-3xl hidden md:flex flex-col relative z-20 p-6">
         <NavContent />
       </aside>
 
-      {/* Mobile Top Bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-16 border-b border-white/10 bg-black/80 backdrop-blur-xl flex items-center justify-between px-4 transition-all">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center shadow-lg">
@@ -148,37 +149,26 @@ export default function Layout() {
         </Button>
       </div>
 
-      {/* Mobile Sidebar Drawer */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm md:hidden pointer-events-auto"
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setIsMobileMenuOpen(false)} 
+              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm md:hidden cursor-pointer" 
             />
-            {/* Drawer */}
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 400, damping: 40 }}
-              className="fixed inset-y-0 left-0 z-[110] w-72 bg-[#09090b] border-r border-white/10 p-6 flex flex-col md:hidden shadow-2xl pointer-events-auto"
+            <motion.div 
+              initial={{ x: "-100%" }} 
+              animate={{ x: 0 }} 
+              exit={{ x: "-100%" }} 
+              transition={{ type: "spring", stiffness: 300, damping: 30 }} 
+              className="fixed inset-y-0 left-0 z-[101] w-72 bg-[#09090b] border-r border-white/10 p-6 flex flex-col md:hidden shadow-2xl"
             >
-              <div className="flex justify-end mb-4">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsMobileMenuOpen(false);
-                  }} 
-                  className="hover:bg-white/10 rounded-full h-10 w-10 flex items-center justify-center"
-                >
-                  <X className="h-6 w-6 text-zinc-400 hover:text-white" />
+              <div className="flex justify-end mb-2">
+                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="hover:bg-white/10 rounded-full">
+                  <X className="h-5 w-5 text-zinc-400 hover:text-white transition-colors" />
                 </Button>
               </div>
               <NavContent mobile={true} />
@@ -187,17 +177,9 @@ export default function Layout() {
         )}
       </AnimatePresence>
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth pt-16 md:pt-0 z-10">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth pt-16 md:pt-0">
         <AnimatePresence mode="wait">
-          <MotionDiv
-            key={location.pathname}
-            initial={{ opacity: 0, y: 15, scale: 0.98, filter: 'blur(8px)' }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -15, scale: 0.98, filter: 'blur(8px)' }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} 
-            className="p-4 md:p-8 max-w-7xl mx-auto min-h-full pb-24"
-          >
+          <MotionDiv key={location.pathname} initial={{ opacity: 0, y: 15, scale: 0.98, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, scale: 0.98, filter: 'blur(8px)' }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} className="p-4 md:p-8 max-w-7xl mx-auto min-h-full pb-24">
             <Outlet />
           </MotionDiv>
         </AnimatePresence>

@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { StopCircle, Wifi, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+const MotionDiv = motion.div as any;
+
 export default function SessionManagement() {
   const [sessions, setSessions] = useState<any[]>([]);
 
@@ -46,15 +48,19 @@ export default function SessionManagement() {
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sessions.map((s) => (
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} key={s._id}>
+          <MotionDiv initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} key={s._id}>
             <Card className="glass-card border-primary/20 relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-3">
                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
               <CardContent className="p-6">
                 <div className="mb-4">
-                  <div className="text-xs font-bold text-primary mb-1">{s.course.code}</div>
-                  <h3 className="text-lg font-bold text-white leading-tight">{s.course.title}</h3>
+                  <div className="text-xs font-bold text-primary mb-1">
+                    {s.course?.code || 'GENERAL'}
+                  </div>
+                  <h3 className="text-lg font-bold text-white leading-tight">
+                    {s.course?.title || s.title}
+                  </h3>
                 </div>
                 
                 <div className="space-y-2 text-sm text-muted-foreground mb-6">
@@ -77,7 +83,7 @@ export default function SessionManagement() {
                 </Button>
               </CardContent>
             </Card>
-          </motion.div>
+          </MotionDiv>
         ))}
         {sessions.length === 0 && (
           <div className="col-span-full p-12 text-center text-muted-foreground border border-dashed border-white/10 rounded-xl">

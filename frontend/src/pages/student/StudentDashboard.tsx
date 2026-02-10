@@ -50,7 +50,6 @@ export default function StudentDashboard() {
       await api.post(`/attendance/${sessionId}/mark`);
       toast.success('Attendance Marked Successfully!');
       
-      // Emit full details to socket for the Live Monitor
       socket.emit('attendance_marked', { 
         sessionId, 
         student: {
@@ -61,19 +60,17 @@ export default function StudentDashboard() {
       });
       
       fetchActiveSessions();
-      fetchHistory(); // Refresh stats
+      fetchHistory(); 
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to mark');
     }
   };
 
-  // Calculate stats for Radial Chart
   const presentCount = history.filter(h => h.status === 'present').length;
-  // Dynamic calculation attempt: attendance / (attendance + estimated missed)
   const attendanceRate = Math.min(100, Math.round((presentCount / (presentCount + 5)) * 100)) || 0; 
 
   const chartData = [
-    { name: 'Total', count: 100, fill: '#27272a' }, // Background ring
+    { name: 'Total', count: 100, fill: '#27272a' }, 
     { name: 'Present', count: attendanceRate, fill: '#8b5cf6' }
   ];
 
@@ -139,9 +136,11 @@ export default function StudentDashboard() {
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <div className="px-2 py-1 rounded bg-[#8b5cf6]/20 text-[#c4b5fd] text-[10px] font-bold inline-block mb-2 border border-[#8b5cf6]/20">
-                        {session.course.code}
+                        {session.course?.code || 'GEN'}
                       </div>
-                      <h4 className="text-xl md:text-2xl font-bold text-white leading-tight">{session.course.title}</h4>
+                      <h4 className="text-xl md:text-2xl font-bold text-white leading-tight">
+                        {session.course?.title || session.title}
+                      </h4>
                     </div>
                     <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/10">
                       <Wifi className="h-5 w-5 text-[#8b5cf6] animate-pulse" />
@@ -228,10 +227,6 @@ export default function StudentDashboard() {
                  <div className="flex justify-between items-center text-xs p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-default">
                    <span className="text-white font-bold">CSC 301</span>
                    <span className="text-zinc-400">Mon, 9:00 AM</span>
-                 </div>
-                 <div className="flex justify-between items-center text-xs p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-default">
-                   <span className="text-white font-bold">GNS 202</span>
-                   <span className="text-zinc-400">Tue, 2:00 PM</span>
                  </div>
               </div>
             </div>

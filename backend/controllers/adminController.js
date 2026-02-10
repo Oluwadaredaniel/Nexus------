@@ -6,6 +6,27 @@ import ClassList from '../models/ClassList.js';
 import Attendance from '../models/Attendance.js';
 import Level from '../models/Level.js';
 import Session from '../models/Session.js';
+import SystemSettings from '../models/SystemSettings.js';
+
+// --- System Settings ---
+export const getSystemSettings = async (req, res) => {
+  try {
+    let settings = await SystemSettings.findOne({ singletonId: 'CONFIG' });
+    if (!settings) settings = await SystemSettings.create({});
+    res.json(settings);
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
+export const updateSystemSettings = async (req, res) => {
+  try {
+    const settings = await SystemSettings.findOneAndUpdate(
+      { singletonId: 'CONFIG' },
+      { $set: req.body },
+      { new: true, upsert: true }
+    );
+    res.json(settings);
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
 
 // --- Structure ---
 export const addFaculty = async (req, res) => {
@@ -119,21 +140,11 @@ export const deleteUser = async (req, res) => {
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
-export const resetUserPassword = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if(!user) return res.status(404).json({ message: 'User not found'});
-    user.password = 'password123'; 
-    user.isPasswordChanged = false;
-    await user.save();
-    res.json({ message: 'Password reset to: password123' });
-  } catch (error) { res.status(500).json({ message: error.message }); }
-}
-
 export const getAllReps = async (req, res) => {
   try {
-    // Get all types of reps
-    const reps = await User.find({ role: { $in: ['class_rep', 'dept_rep', 'faculty_rep'] } }).select('-password');
+    const reps = await User.find({ 
+      role: { $in: ['class_rep', 'dept_rep', 'faculty_rep'] } 
+    }).select('-password');
     res.json(reps);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
@@ -151,30 +162,28 @@ export const demoteRep = async (req, res) => {
 export const uploadClassList = async (req, res) => {
   const { students, context } = req.body; 
   if (!students || !Array.isArray(students)) return res.status(400).json({ message: 'Invalid students data' });
-  if (!context || !context.faculty || !context.department || !context.level) return res.status(400).json({ message: 'Missing academic context' });
+  
+  // If not Master file, we need context. If Master file, context is in rows.
+  // The frontend handles normalization. Here we trust the data.
 
   try {
     const enrichedStudents = students
       .filter(s => s.regNo && s.name)
       .map(s => ({
-        regNo: String(s.regNo).toUpperCase().trim(),
-        name: String(s.name).trim(),
-        faculty: context.faculty,
-        department: context.department,
-        level: context.level,
-        option: context.option || null,
+        regNo: s.regNo,
+        name: s.name,
+        faculty: s.faculty || context?.faculty,
+        department: s.department || context?.department,
+        level: s.level || context?.level,
+        option: s.option || context?.option || null,
       }));
-
-    if (enrichedStudents.length === 0) {
-      return res.status(400).json({ message: 'No valid rows found. Please check your Excel headers contain "RegNo" and "Name".' });
-    }
 
     const classListOps = enrichedStudents.map(s => ({
       updateOne: { filter: { regNo: s.regNo }, update: { $set: s }, upsert: true }
     }));
     await ClassList.bulkWrite(classListOps);
     
-    // Also update existing users context if they exist
+    // Auto-update existing user profiles if they exist to match list
     const userOps = enrichedStudents.map(s => ({
       updateOne: {
         filter: { regNo: s.regNo },
@@ -183,84 +192,26 @@ export const uploadClassList = async (req, res) => {
     }));
     if (userOps.length > 0) await User.bulkWrite(userOps);
     
-    res.json({ message: `Successfully processed ${enrichedStudents.length} students.` });
-  } catch (error) { res.status(500).json({ message: error.message }); }
-};
-
-export const getClassListSummaries = async (req, res) => {
-  try {
-    const summary = await ClassList.aggregate([
-      {
-        $group: {
-          _id: {
-            faculty: "$faculty",
-            department: "$department",
-            level: "$level",
-            option: "$option"
-          },
-          studentCount: { $sum: 1 },
-          lastUpdated: { $max: "$updatedAt" }
-        }
-      },
-      { $sort: { "_id.faculty": 1, "_id.department": 1, "_id.level": 1 } }
-    ]);
-    res.json(summary);
-  } catch (error) { res.status(500).json({ message: error.message }); }
-};
-
-// NEW: Delete entire class list cohort
-export const deleteClassList = async (req, res) => {
-  try {
-    const { faculty, department, level, option } = req.query;
-    
-    if (!faculty || !department || !level) {
-      return res.status(400).json({ message: 'Missing parameters. Faculty, Department and Level are required.' });
-    }
-
-    // Build filter. Handle option being 'null' string carefully if passed from query
-    const filter = { 
-      faculty, 
-      department, 
-      level 
-    };
-
-    if (option && option !== 'null' && option !== '') {
-      filter.option = option;
-    } else {
-      filter.option = null;
-    }
-
-    const result = await ClassList.deleteMany(filter);
-    res.json({ message: `Deleted ${result.deletedCount} student entries from class list.` });
+    res.json({ message: `Processed ${enrichedStudents.length} students.` });
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
 export const assignClassRep = async (req, res) => {
-  const { regNo, role, faculty, department, level, option } = req.body;
-  
-  if (!regNo || !role) {
-    return res.status(400).json({ message: 'RegNo and Role are required.' });
-  }
-
+  const { regNo, role, department, faculty, level, option } = req.body;
   try {
-    // 1. Check User Account
-    const user = await User.findOne({ regNo: String(regNo).toUpperCase().trim() });
-    if (!user) {
-      return res.status(404).json({ message: 'Student account not found. The student must sign up first.' });
-    }
-
-    // 2. Validate Context based on Role
-    // Reps must still be students with a valid academic context
-    user.faculty = faculty;
-    user.department = department;
-    user.level = level;
-    user.option = option || null; 
-
-    // 3. Promote
-    user.role = role; 
+    const user = await User.findOne({ regNo });
+    if (!user) return res.status(404).json({ message: 'Student must sign up first.' });
     
+    user.role = role || 'class_rep';
+    // Update their context to match what they are representing
+    if (department) user.department = department;
+    if (faculty) user.faculty = faculty;
+    if (level) user.level = level;
+    // Explicitly set option (can be null for Dept Reps)
+    user.option = option || null;
+
     await user.save();
-    res.json({ message: `Success! ${user.name} assigned as ${role.replace('_', ' ').toUpperCase()}` });
+    res.json({ message: `User ${regNo} assigned as ${user.role}` });
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
@@ -303,46 +254,18 @@ export const forceEndSession = async (req, res) => {
 export const getAnalytics = async (req, res) => {
   try {
     const totalStudents = await User.countDocuments({ role: 'student' });
+    const totalCourses = await Course.countDocuments();
+    const totalAttendance = await Attendance.countDocuments({ status: 'present' });
+    const recentActivity = await Attendance.find().sort({ createdAt: -1 }).limit(5).populate('student', 'name regNo');
+    
+    // New stats
+    const totalFaculties = await Faculty.countDocuments();
     const totalReps = await User.countDocuments({ role: { $in: ['class_rep', 'dept_rep', 'faculty_rep'] } });
     
-    const totalFaculties = await Faculty.countDocuments();
-    const faculties = await Faculty.find({});
-    const totalDepartments = faculties.reduce((acc, f) => acc + f.departments.length, 0);
+    // Calculate total departmentsz
+    const allFacs = await Faculty.find({});
+    const totalDepartments = allFacs.reduce((acc, fac) => acc + fac.departments.length, 0);
 
-    const totalCourses = await Course.countDocuments();
-    const totalAttendance = await Attendance.countDocuments({ status: 'present' });
-    
-    const recentActivity = await Attendance.find().sort({ createdAt: -1 }).limit(5).populate('student', 'name regNo');
-    
-    res.json({ 
-      totalStudents, 
-      totalReps,
-      totalFaculties,
-      totalDepartments,
-      totalCourses, 
-      totalAttendance, 
-      recentActivity 
-    });
-  } catch (error) { res.status(400).json({ message: error.message }); }
-};_rep', 'dept_rep', 'faculty_rep'] } });
-    
-    const totalFaculties = await Faculty.countDocuments();
-    const faculties = await Faculty.find({});
-    const totalDepartments = faculties.reduce((acc, f) => acc + f.departments.length, 0);
-
-    const totalCourses = await Course.countDocuments();
-    const totalAttendance = await Attendance.countDocuments({ status: 'present' });
-    
-    const recentActivity = await Attendance.find().sort({ createdAt: -1 }).limit(5).populate('student', 'name regNo');
-    
-    res.json({ 
-      totalStudents, 
-      totalReps,
-      totalFaculties,
-      totalDepartments,
-      totalCourses, 
-      totalAttendance, 
-      recentActivity 
-    });
+    res.json({ totalStudents, totalCourses, totalAttendance, recentActivity, totalFaculties, totalDepartments, totalReps });
   } catch (error) { res.status(400).json({ message: error.message }); }
 };

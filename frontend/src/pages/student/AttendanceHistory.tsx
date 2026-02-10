@@ -36,7 +36,7 @@ export default function AttendanceHistory() {
               <thead className="bg-white/5 text-muted-foreground uppercase text-xs">
                 <tr>
                   <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Course</th>
+                  <th className="px-6 py-4">Course / Session</th>
                   <th className="px-6 py-4">Session Date</th>
                   <th className="px-6 py-4">Marked At</th>
                 </tr>
@@ -63,8 +63,12 @@ export default function AttendanceHistory() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-white">{record.session?.course?.code || 'N/A'}</div>
-                      <div className="text-xs text-muted-foreground">{record.session?.course?.title || 'Unknown Course'}</div>
+                      <div className="font-semibold text-white">
+                        {record.session?.course?.code || (record.session?.type === 'GENERAL' ? 'GEN' : 'N/A')}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {record.session?.course?.title || record.session?.title || 'Untitled'}
+                      </div>
                     </td>
                     <td className="px-6 py-4 flex items-center gap-2 text-muted-foreground">
                       <CalendarDays className="h-4 w-4" />
