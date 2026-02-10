@@ -5,7 +5,7 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Upload, AlertCircle, Layers, Users, BookOpen, Download, FileSpreadsheet, Trash2, X, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+import { Upload, AlertCircle, Layers, Users, BookOpen, Download, FileSpreadsheet, Trash2, X, CheckCircle2, Loader2, AlertTriangle, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MotionDiv = motion.div as any;
@@ -17,7 +17,7 @@ export default function UploadClassList() {
   const [levels, setLevels] = useState<any[]>([]);
   const [summaries, setSummaries] = useState<any[]>([]);
   
-  // Context State
+  // Context State (Optional now if master file is used)
   const [selectedFaculty, setSelectedFaculty] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedDeptData, setSelectedDeptData] = useState<any>(null);
@@ -29,6 +29,7 @@ export default function UploadClassList() {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [detectedHeaders, setDetectedHeaders] = useState<string[]>([]);
+  const [isMasterFile, setIsMasterFile] = useState(false); // New flag for mixed content
 
   // Ref for file input
   const eRef = useRef<HTMLInputElement>(null);
@@ -69,13 +70,12 @@ export default function UploadClassList() {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { RegNo: "CSC/2024/001", Name: "Adewale Johnson" },
-      { RegNo: "CSC/2024/002", Name: "Sarah Connor" },
-      { RegNo: "CSC/2024/003", Name: "Ibrahim Musa" }
+      { RegNo: "CSC/2024/001", Name: "Adewale Johnson", Faculty: "Science", Department: "Computer Science", Level: "400" },
+      { RegNo: "CSC/2024/002", Name: "Sarah Connor", Faculty: "Science", Department: "Mathematics", Level: "200" },
     ]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ClassList_Template");
-    XLSX.writeFile(wb, "Nexus_ClassList_Template.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Master_Template");
+    XLSX.writeFile(wb, "Nexus_Master_List_Template.xlsx");
   };
 
   const normalizeHeaders = (data: any[]) => {
@@ -85,29 +85,30 @@ export default function UploadClassList() {
     const headers = Object.keys(firstRow);
     setDetectedHeaders(headers);
 
-    return data.map(row => {
+    let hasMeta = false;
+
+    const processed = data.map(row => {
       const newRow: any = {};
       headers.forEach(key => {
         const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
         const val = String(row[key] || '').trim();
         
         // Robust Mapping Logic
-        const regKeywords = ['reg', 'matric', 'jamb', 'admission', 'identity', 'no', 'id'];
-        const nameKeywords = ['name', 'full', 'student', 'fullname'];
-
-        const isReg = regKeywords.some(k => cleanKey.includes(k));
-        const isName = nameKeywords.some(k => cleanKey.includes(k));
-
-        if (isReg && !newRow.regNo) {
-          newRow.regNo = val;
-        } else if (isName && !newRow.name) {
-          newRow.name = val;
-        } else {
-          newRow[key] = row[key];
-        }
+        if (['regno', 'matricno', 'id', 'studentno'].some(k => cleanKey.includes(k))) newRow.regNo = val;
+        else if (['name', 'fullname', 'studentname'].some(k => cleanKey.includes(k))) newRow.name = val;
+        else if (cleanKey === 'faculty') newRow.faculty = val;
+        else if (cleanKey === 'department' || cleanKey === 'dept') newRow.department = val;
+        else if (cleanKey === 'level') newRow.level = val;
+        else if (cleanKey === 'option' || cleanKey === 'track') newRow.option = val;
+        else newRow[key] = row[key];
       });
+      
+      if (newRow.faculty && newRow.department && newRow.level) hasMeta = true;
       return newRow;
     });
+
+    setIsMasterFile(hasMeta);
+    return processed;
   };
 
   const processFile = (file: File) => {
@@ -124,15 +125,18 @@ export default function UploadClassList() {
         const validRows = normalizedData.filter((r: any) => r.regNo && r.name && r.regNo.length > 2);
 
         if (validRows.length === 0) {
-          // Keep detectedHeaders so the UI shows what we found
           setFile(null);
+          toast.error("No valid student rows found.");
           return;
         }
 
         setPreviewData(validRows);
         setFile(file);
         setDetectedHeaders([]); // Clear error state on success
-        toast.success(`Detected ${validRows.length} students`);
+        
+        if (isMasterFile) toast.success(`Smart Import: ${validRows.length} mixed records detected!`);
+        else toast.success(`Detected ${validRows.length} students`);
+
       } catch (err) {
         console.error(err);
         toast.error('Error parsing Excel file.');
@@ -149,10 +153,6 @@ export default function UploadClassList() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    if (!canProceedToUpload) {
-      toast.error('Select Faculty, Dept and Level first.');
-      return;
-    }
     if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
   };
 
@@ -161,11 +161,19 @@ export default function UploadClassList() {
     setPreviewData([]);
     setUploadProgress(0);
     setDetectedHeaders([]);
+    setIsMasterFile(false);
     if (eRef.current) eRef.current.value = "";
   };
 
   const uploadData = async () => {
     if (!previewData.length) return;
+    
+    // Final check for context if NOT master file
+    if (!isMasterFile && (!selectedFaculty || !selectedDept || !selectedLevel)) {
+       toast.error("Please select Faculty, Dept and Level since the file doesn't contain them.");
+       return;
+    }
+
     setLoading(true);
     setUploadProgress(0);
     
@@ -189,7 +197,7 @@ export default function UploadClassList() {
         }
       });
 
-      toast.success(res.data.message || `Uploaded ${previewData.length} students`);
+      toast.success(res.data.message);
       clearFile();
       fetchSummaries();
     } catch (err: any) {
@@ -201,7 +209,7 @@ export default function UploadClassList() {
   };
 
   const handleDeleteList = async (item: any) => {
-    const confirmMsg = `Delete the class list for ${item._id.department} Level ${item._id.level}?`;
+    const confirmMsg = `Permanently delete the class list for ${item._id.department} - Level ${item._id.level}?`;
     if (!window.confirm(confirmMsg)) return;
 
     const params = new URLSearchParams({
@@ -213,12 +221,10 @@ export default function UploadClassList() {
 
     try {
       await api.delete(`/admin/class-lists?${params.toString()}`);
-      toast.success('Deleted');
+      toast.success('List removed successfully');
       fetchSummaries();
-    } catch(e) { toast.error('Failed to delete'); }
+    } catch(e) { toast.error('Failed to delete list'); }
   };
-
-  const canProceedToUpload = selectedFaculty && selectedDept && selectedLevel && (!hasOptions || selectedOption);
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -241,7 +247,15 @@ export default function UploadClassList() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 mb-2 flex gap-3">
+                 <Zap className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
+                 <div className="text-xs text-indigo-200/80 leading-relaxed">
+                   <strong>Smart Upload:</strong> Drag & drop a file containing 'Faculty', 'Department', and 'Level' columns to skip manual selection.
+                 </div>
+              </div>
+
+              <div className={`grid grid-cols-2 gap-4 transition-opacity duration-300 ${isMasterFile ? 'opacity-30 pointer-events-none grayscale' : 'opacity-100'}`}>
                  <div className="col-span-2 md:col-span-1">
                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1 mb-1 block">Faculty</label>
                    <select 
@@ -301,9 +315,7 @@ export default function UploadClassList() {
                   <>
                     <div 
                       className={`relative p-10 border-2 border-dashed rounded-3xl text-center transition-all duration-300 ${
-                        canProceedToUpload 
-                          ? (isDragOver ? 'border-primary bg-primary/10 scale-[1.01]' : 'border-white/10 bg-white/5 hover:border-primary/50 cursor-pointer') 
-                          : 'border-white/5 opacity-40 cursor-not-allowed'
+                        isDragOver ? 'border-primary bg-primary/10 scale-[1.01]' : 'border-white/10 bg-white/5 hover:border-primary/50 cursor-pointer'
                       }`}
                       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                       onDragLeave={() => setIsDragOver(false)}
@@ -316,32 +328,17 @@ export default function UploadClassList() {
                         onChange={handleFileSelect} 
                         className="hidden" 
                         id="file-upload" 
-                        disabled={!canProceedToUpload}
                       />
-                      <label htmlFor="file-upload" className={`flex flex-col items-center ${canProceedToUpload ? 'cursor-pointer' : ''}`}>
+                      <label htmlFor="file-upload" className="flex flex-col items-center cursor-pointer">
                         <div className="h-16 w-16 bg-black/40 rounded-full flex items-center justify-center mb-4 border border-white/10">
-                          <Upload className={`h-8 w-8 ${canProceedToUpload ? 'text-primary' : 'text-zinc-600'}`} />
+                          <Upload className="h-8 w-8 text-primary" />
                         </div>
                         <div className="font-bold text-white mb-1">
-                          {canProceedToUpload ? "Drop Excel List Here" : "Complete Context Above"}
+                          Drop Class List / Master File
                         </div>
-                        <p className="text-xs text-muted-foreground">Supports: JAMB Reg, Full Name, Matric No, etc.</p>
+                        <p className="text-xs text-muted-foreground">Supports: RegNo, Name, (Faculty, Dept, Level)</p>
                       </label>
                     </div>
-
-                    {detectedHeaders.length > 0 && (
-                      <MotionDiv initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                        <div className="flex items-center gap-2 mb-2 font-bold text-red-400 text-sm">
-                          <AlertTriangle className="h-4 w-4" /> Header Detection Failed
-                        </div>
-                        <p className="text-xs text-red-200/70 mb-3">We couldn't identify the required 'RegNo' and 'Name' columns. Found these headers:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {detectedHeaders.map((h, i) => (
-                            <span key={i} className="px-2 py-1 rounded bg-black border border-white/5 text-[10px] font-mono text-zinc-400">{h}</span>
-                          ))}
-                        </div>
-                      </MotionDiv>
-                    )}
                   </>
                 ) : (
                   <MotionDiv initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
@@ -350,7 +347,9 @@ export default function UploadClassList() {
                         <FileSpreadsheet className="h-5 w-5 text-emerald-500" />
                         <div>
                           <div className="font-bold text-white text-sm truncate max-w-[200px]">{file.name}</div>
-                          <div className="text-[10px] text-emerald-400/80 uppercase font-bold tracking-widest">{previewData.length} valid entries</div>
+                          <div className="text-[10px] text-emerald-400/80 uppercase font-bold tracking-widest">
+                            {previewData.length} entries {isMasterFile && '• AUTO-SORT ENABLED'}
+                          </div>
                         </div>
                       </div>
                       <Button variant="ghost" size="icon" onClick={clearFile} disabled={loading} className="hover:bg-red-500/20">
@@ -363,8 +362,9 @@ export default function UploadClassList() {
                         <thead className="bg-white/5 text-muted-foreground uppercase sticky top-0 backdrop-blur-md">
                           <tr>
                             <th className="px-4 py-3">#</th>
-                            <th className="px-4 py-3">Identifier (Reg/JAMB)</th>
+                            <th className="px-4 py-3">Identifier</th>
                             <th className="px-4 py-3">Name</th>
+                            {isMasterFile && <th className="px-4 py-3">Context</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -373,6 +373,11 @@ export default function UploadClassList() {
                               <td className="px-4 py-2 text-muted-foreground">{i + 1}</td>
                               <td className="px-4 py-2 font-mono text-white">{row.regNo}</td>
                               <td className="px-4 py-2 text-zinc-300">{row.name}</td>
+                              {isMasterFile && (
+                                <td className="px-4 py-2 text-[10px] text-emerald-400 font-mono">
+                                  {row.department} ({row.level})
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -383,7 +388,7 @@ export default function UploadClassList() {
                       {loading ? (
                         <div className="space-y-2">
                           <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                            <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin text-emerald-500" /> Synchronizing...</span>
+                            <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin text-emerald-500" /> Uploading...</span>
                             <span>{uploadProgress}%</span>
                           </div>
                           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -410,6 +415,7 @@ export default function UploadClassList() {
           </Card>
         </div>
 
+        {/* Existing Cohorts Column */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-zinc-400" /> Active Cohorts
@@ -425,7 +431,7 @@ export default function UploadClassList() {
               >
                 <div className="flex justify-between items-start mb-1">
                   <h4 className="font-bold text-white text-sm truncate max-w-[150px]">{item._id.department}</h4>
-                  <button onClick={() => handleDeleteList(item)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-500 transition-all">
+                  <button onClick={() => handleDeleteList(item)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white transition-all">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -446,6 +452,11 @@ export default function UploadClassList() {
                 </div>
               </MotionDiv>
             ))}
+            {summaries.length === 0 && (
+              <div className="text-center py-10 border border-dashed border-white/10 rounded-xl text-muted-foreground text-sm">
+                No class lists found.
+              </div>
+            )}
           </div>
         </div>
       </div>

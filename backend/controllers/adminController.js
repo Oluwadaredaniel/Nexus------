@@ -159,13 +159,33 @@ export const demoteRep = async (req, res) => {
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
+// --- Class Lists ---
+
+export const getClassListSummaries = async (req, res) => {
+  try {
+    const summaries = await ClassList.aggregate([
+      {
+        $group: {
+          _id: {
+            faculty: "$faculty",
+            department: "$department",
+            level: "$level",
+            option: "$option"
+          },
+          studentCount: { $sum: 1 },
+          lastUpdated: { $max: "$updatedAt" }
+        }
+      },
+      { $sort: { "_id.faculty": 1, "_id.department": 1, "_id.level": 1 } }
+    ]);
+    res.json(summaries);
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
 export const uploadClassList = async (req, res) => {
   const { students, context } = req.body; 
   if (!students || !Array.isArray(students)) return res.status(400).json({ message: 'Invalid students data' });
   
-  // If not Master file, we need context. If Master file, context is in rows.
-  // The frontend handles normalization. Here we trust the data.
-
   try {
     const enrichedStudents = students
       .filter(s => s.regNo && s.name)
@@ -193,6 +213,23 @@ export const uploadClassList = async (req, res) => {
     if (userOps.length > 0) await User.bulkWrite(userOps);
     
     res.json({ message: `Processed ${enrichedStudents.length} students.` });
+  } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
+export const deleteClassList = async (req, res) => {
+  const { faculty, department, level, option } = req.query;
+  try {
+    const query = { faculty, department, level };
+    
+    // Handle 'null' string from query params or actual null
+    if (option && option !== 'null' && option !== 'undefined') {
+      query.option = option;
+    } else {
+      query.option = null;
+    }
+
+    const result = await ClassList.deleteMany(query);
+    res.json({ message: `Deleted ${result.deletedCount} records for this cohort.` });
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
@@ -262,7 +299,7 @@ export const getAnalytics = async (req, res) => {
     const totalFaculties = await Faculty.countDocuments();
     const totalReps = await User.countDocuments({ role: { $in: ['class_rep', 'dept_rep', 'faculty_rep'] } });
     
-    // Calculate total departmentsz
+    // Calculate total departments
     const allFacs = await Faculty.find({});
     const totalDepartments = allFacs.reduce((acc, fac) => acc + fac.departments.length, 0);
 
